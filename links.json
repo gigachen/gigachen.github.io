@@ -1,4 +1,8 @@
 {
+  "portfolio": {
+    "destination": "https://francis-gunadi-portfolio.francis-gunadi108901.chatgpt.site/",
+    "status": "active"
+  },
   "demo": {
     "destination": "https://github.com/gigachen/gigachen.github.io",
     "status": "active"

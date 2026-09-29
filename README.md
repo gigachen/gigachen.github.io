@@ -2,6 +2,8 @@
 
 A dependency-free concept landing page for the TapTap NFC card, hosted from this repository on GitHub Pages at `gigachen.me`.
 
+For card URLs and the redirect service, see [REDIRECTS.md](REDIRECTS.md).
+
 ## Local preview
 
 Run `python3 -m http.server 8000` in this directory and open `http://localhost:8000`.
@@ -11,6 +13,7 @@ Run `python3 -m http.server 8000` in this directory and open `http://localhost:8
 - `assets/taptap-preview.png` is the TapTap card concept render.
 - The QR in that render is a visual placeholder and does not work.
 - The one-time and smart-card options are proposals. This site has no checkout, account, or active subscription service.
+- `links.json` and `scripts/generate-redirects.mjs` provide a static redirect prototype; `worker/` contains the HTTP `302` service for a future Cloudflare deployment.
 
 ## Publishing and domain
 

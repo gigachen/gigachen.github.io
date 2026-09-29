@@ -19,7 +19,7 @@ Run `python3 -m http.server 8000` in this directory and open `http://localhost:8
 
 The `CNAME` file points GitHub Pages at `gigachen.me`. Publish the root of `main` from repository Settings → Pages.
 
-At the domain's DNS provider, add these four `A` records for `@`:
+Namecheap DNS currently points the root domain to GitHub Pages with these four `A` records for `@`:
 
 ```text
 185.199.108.153
@@ -28,4 +28,4 @@ At the domain's DNS provider, add these four `A` records for `@`:
 185.199.111.153
 ```
 
-These are GitHub's [recommended apex-domain records](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site). Enable **Enforce HTTPS** once DNS resolves and GitHub has provisioned a certificate.
+These are GitHub's [recommended apex-domain records](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site). The certificate was approved and **Enforce HTTPS** was enabled on 29 September 2026.

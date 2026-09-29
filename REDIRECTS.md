@@ -62,7 +62,7 @@ Moving nameservers should be planned carefully if the domain later has email or 
 
 ## HTTPS before physical cards
 
-The browser currently shows the site over HTTP, and the HTTPS certificate for `gigachen.me` was not valid when checked on 29 September 2026. The Namecheap DNS records now point to GitHub Pages, but GitHub may still be provisioning the certificate. Check repository Settings → Pages, confirm the custom domain, and enable **Enforce HTTPS** when it becomes available. Use HTTPS URLs on NFC cards and QR codes only after the certificate works. Do not bypass certificate warnings.
+The GitHub Pages certificate for `gigachen.me` was approved and **Enforce HTTPS** was enabled on 29 September 2026. `https://gigachen.me/` now loads with a valid certificate. Verify the exact redirect URL over HTTPS before printing a QR code or programming an NFC card. Do not bypass certificate warnings.
 
 If the endpoint must be exactly `gigachen.me/r/<id>/`, a Cloudflare Worker route can do that, but the apex would have to be proxied through Cloudflare. That changes how GitHub Pages receives traffic and needs a separate deployment and HTTPS check. The `go` subdomain avoids touching the existing website origin.
 

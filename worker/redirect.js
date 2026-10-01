@@ -5,7 +5,7 @@ function validDestination(value) {
   try {
     const url = new URL(value);
     if (url.protocol !== 'https:' || url.username || url.password) return null;
-    if (['gigachen.me', 'go.gigachen.me'].includes(url.hostname) && url.pathname.startsWith('/r/')) return null;
+    if (['tap-tap.live', 'www.tap-tap.live', 'go.tap-tap.live', 'gigachen.me', 'go.gigachen.me'].includes(url.hostname) && url.pathname.startsWith('/r/')) return null;
     return url.toString();
   } catch {
     return null;
@@ -13,7 +13,7 @@ function validDestination(value) {
 }
 
 function messagePage(status, title, message, method = 'GET') {
-  const body = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${title} · TapTap</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f6f8ff;color:#13235a;font:16px Arial,sans-serif}main{max-width:460px;padding:32px}h1{font-size:36px;letter-spacing:-.05em}p{line-height:1.6}a{color:#183ba8;font-weight:bold}</style></head><body><main><h1>${title}</h1><p>${message}</p><a href="https://gigachen.me/">Back to TapTap →</a></main></body></html>`;
+  const body = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${title} · TapTap</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f6f8ff;color:#13235a;font:16px Arial,sans-serif}main{max-width:460px;padding:32px}h1{font-size:36px;letter-spacing:-.05em}p{line-height:1.6}a{color:#183ba8;font-weight:bold}</style></head><body><main><h1>${title}</h1><p>${message}</p><a href="https://tap-tap.live/">Back to TapTap →</a></main></body></html>`;
   return new Response(method === 'HEAD' ? null : body, {
     status,
     headers: {

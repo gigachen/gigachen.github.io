@@ -15,7 +15,7 @@ function validateDestination(value) {
   if (typeof value !== 'string') throw new Error('Destination must be a string');
   const url = new URL(value);
   if (url.protocol !== 'https:' || url.username || url.password) throw new Error('Destination must be an HTTPS URL without embedded credentials');
-  if (['gigachen.me', 'go.gigachen.me'].includes(url.hostname) && url.pathname.startsWith('/r/')) throw new Error('Destination cannot point to another TapTap redirect');
+  if (['tap-tap.live', 'www.tap-tap.live', 'go.tap-tap.live', 'gigachen.me', 'go.gigachen.me'].includes(url.hostname) && url.pathname.startsWith('/r/')) throw new Error('Destination cannot point to another TapTap redirect');
   return url.toString();
 }
 

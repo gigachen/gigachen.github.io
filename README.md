@@ -1,6 +1,6 @@
 # TapTap website
 
-A dependency-free concept landing page for the TapTap NFC card, hosted from this repository on GitHub Pages at `gigachen.me`.
+A dependency-free concept landing page for the TapTap NFC card, hosted from this repository on GitHub Pages at `tap-tap.live`.
 
 For card URLs and the redirect service, see [REDIRECTS.md](REDIRECTS.md).
 
@@ -17,9 +17,9 @@ Run `python3 -m http.server 8000` in this directory and open `http://localhost:8
 
 ## Publishing and domain
 
-The `CNAME` file points GitHub Pages at `gigachen.me`. Publish the root of `main` from repository Settings → Pages.
+The `CNAME` file points GitHub Pages at `tap-tap.live`. Publish the root of `main` from repository Settings → Pages.
 
-Namecheap DNS currently points the root domain to GitHub Pages with these four `A` records for `@`:
+Name.com DNS points the root domain to GitHub Pages with these four `A` records for `@`:
 
 ```text
 185.199.108.153
@@ -28,4 +28,8 @@ Namecheap DNS currently points the root domain to GitHub Pages with these four `
 185.199.111.153
 ```
 
-These are GitHub's [recommended apex-domain records](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site). The certificate was approved and **Enforce HTTPS** was enabled on 29 September 2026.
+Add a `CNAME` record for `www` pointing to `gigachen.github.io`. In Name.com, leave the host blank for each apex A record. Keep Name.com's default nameservers.
+
+These are GitHub's [recommended custom-domain records](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site). The custom domain was changed from `gigachen.me` on 1 October 2026. Wait for DNS and GitHub's certificate provisioning, then enable **Enforce HTTPS** in Settings → Pages.
+
+The old domain requires its own forwarding service if existing links should redirect to `tap-tap.live`; changing this repository's `CNAME` does not configure that forwarding.

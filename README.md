@@ -30,6 +30,6 @@ Name.com DNS points the root domain to GitHub Pages with these four `A` records 
 
 Add a `CNAME` record for `www` pointing to `gigachen.github.io`. In Name.com, leave the host blank for each apex A record. Keep Name.com's default nameservers.
 
-These are GitHub's [recommended custom-domain records](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site). The custom domain was changed from `gigachen.me` on 1 October 2026. Wait for DNS and GitHub's certificate provisioning, then enable **Enforce HTTPS** in Settings → Pages.
+These are GitHub's [recommended custom-domain records](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site). The custom domain was changed from `gigachen.me` on 1 October 2026. DNS validation succeeded, the certificate was issued, and **Enforce HTTPS** was enabled on 1 October 2026. Both the apex and `www` certificates were verified; `www` redirects to the apex.
 
-The old domain requires its own forwarding service if existing links should redirect to `tap-tap.live`; changing this repository's `CNAME` does not configure that forwarding.
+The old domain is served by [gigachen-me-redirect](https://github.com/gigachen/gigachen-me-redirect), a separate GitHub Pages site that forwards browser visitors to `tap-tap.live` while preserving paths, query strings, and fragments. It uses JavaScript forwarding, not an HTTP 301. The old domain's Namecheap DNS stays pointed at GitHub Pages.

@@ -6,7 +6,7 @@ Keep the URL printed in a QR code or written to an NFC card stable:
 https://tap-tap.live/r/card123/
 ```
 
-Previously issued URLs on `gigachen.me` need a separate forwarding service to preserve their paths when migrating to `tap-tap.live`.
+Previously issued URLs on `gigachen.me` are forwarded by the separate [gigachen-me-redirect](https://github.com/gigachen/gigachen-me-redirect) GitHub Pages site, preserving paths, query strings, and fragments with a browser-side JavaScript redirect.
 
 The destination lives elsewhere and can change without rewriting the card. A one-time card can instead store its final destination directly. The redirect route is for the proposed smart card.
 
@@ -64,7 +64,7 @@ Moving nameservers should be planned carefully if the domain later has email or 
 
 ## HTTPS before physical cards
 
-The domain was changed from `gigachen.me` to `tap-tap.live` on 1 October 2026. Wait for DNS propagation and the new GitHub Pages certificate, then enable **Enforce HTTPS** in repository Settings → Pages. Verify the exact redirect URL over HTTPS before printing a QR code or programming an NFC card. Do not bypass certificate warnings.
+The domain was changed from `gigachen.me` to `tap-tap.live` on 1 October 2026. DNS validation succeeded, the certificate was issued, and **Enforce HTTPS** was enabled on 1 October 2026. Verify the exact redirect URL over HTTPS before printing a QR code or programming an NFC card. Do not bypass certificate warnings.
 
 If the endpoint must be exactly `tap-tap.live/r/<id>/`, a Cloudflare Worker route can do that, but the apex would have to be proxied through Cloudflare. That changes how GitHub Pages receives traffic and needs a separate deployment and HTTPS check. The `go` subdomain avoids touching the existing website origin.
 

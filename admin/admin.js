@@ -1,5 +1,9 @@
 (() => {
   'use strict';
+  if (['tap-tap.live', 'www.tap-tap.live', 'gigachen.github.io'].includes(location.hostname)) {
+    location.replace('https://taptap-admin.admin-service.workers.dev/admin/');
+    return;
+  }
   const $ = (id) => document.getElementById(id);
   const state = { links: [], revision: '', filter: 'all', query: '', mode: '', key: '', loading: false, saving: false, editing: null };
   const publicUrl = (id) => `${['database', 'local'].includes(state.mode) ? location.origin : 'https://tap-tap.live'}/r/${id}/`;

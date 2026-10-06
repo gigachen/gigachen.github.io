@@ -41,6 +41,8 @@ The admin panel is deployed at **https://taptap-admin.admin-service.workers.dev/
 
 The initial access key is saved locally in `data/admin-access-key.txt`, which is ignored by Git. Keep it in your password manager and enter it on the hosted panel. It is also configured as the Worker's private `ADMIN_TOKEN` secret.
 
+Opening `https://tap-tap.live/admin/` forwards to the hosted panel too.
+
 Cloudflare D1 uses the same SQLite schema and prepared queries. `admin-service/worker.mjs` serves the admin panel, protected API, and public `/r/<id>/` redirects. It no longer needs GitHub credentials or commits for each save.
 
 The hosted database is separate from the local file. Initial import is explicit; later local edits are not automatically synced to production.

@@ -27,16 +27,18 @@ export async function handleApi(request, { store, authorized, mode, allowedOrigi
     }
     const match = /^\/api\/links\/([a-z0-9][a-z0-9_-]{2,31})$/.exec(url.pathname);
     if (!match) throw new ApiError(404, 'This admin endpoint does not exist.');
-    if (request.method !== 'PUT') return new Response(null, { status: 405, headers: { ...adminHeaders, Allow: 'PUT' } });
+    if (!['PUT', 'DELETE'].includes(request.method)) return new Response(null, { status: 405, headers: { ...adminHeaders, Allow: 'PUT, DELETE' } });
     if (!(allowedOrigins || [url.origin]).includes(request.headers.get('Origin')) || request.headers.get('X-TapTap-Admin') !== '1') throw new ApiError(403, 'Save changes from the TapTap admin panel.');
     if (!(request.headers.get('Content-Type') || '').startsWith('application/json')) throw new ApiError(415, 'Use JSON to save a redirect.');
     const raw = await request.text();
     if (raw.length > 8192) throw new ApiError(413, 'The redirect is too large.');
     let body;
     try { body = JSON.parse(raw); } catch { throw new ApiError(400, 'The redirect data is not valid JSON.'); }
-    if (!body || typeof body !== 'object' || typeof body.revision !== 'string' || typeof body.create !== 'boolean') throw new ApiError(400, 'Reload the list before saving.');
+    if (!body || typeof body !== 'object' || Array.isArray(body) || typeof body.revision !== 'string') throw new ApiError(400, 'Reload the list before changing it.');
     const id = match[1];
     if (!slugPattern.test(id) || ['constructor', 'prototype', '__proto__'].includes(id)) throw new ApiError(400, 'Choose a different card ID.');
+    if (request.method === 'DELETE') return json({ ...await store.remove({ id, revision: body.revision }), mode });
+    if (typeof body.create !== 'boolean') throw new ApiError(400, 'Reload the list before saving.');
     let record;
     try { record = validateRecord(body); } catch (error) { throw new ApiError(400, error.message); }
     const result = await store.save({ id, record, revision: body.revision, create: body.create });

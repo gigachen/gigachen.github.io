@@ -19,8 +19,8 @@ try {
   } else if (action === 'seed') {
     const quote = (value) => "'" + value.replaceAll("'", "''") + "'";
     const inserts = Object.entries(records).map(([id, { destination, status, created_at, updated_at }]) =>
-      `INSERT INTO redirects (id, destination, status, created_at, updated_at) VALUES (${[id, destination, status, created_at, updated_at].map(quote).join(', ')}) ON CONFLICT(id) DO NOTHING;`);
-    const sql = '-- Initial import from the local database. Existing IDs are never overwritten.\n' + inserts.join('\n') + '\nUPDATE redirect_state SET seeded = 1 WHERE singleton = 1;\n';
+      `INSERT INTO redirects (id, destination, status, created_at, updated_at) SELECT ${[id, destination, status, created_at, updated_at].map(quote).join(', ')} WHERE (SELECT seeded FROM redirect_state WHERE singleton = 1) = 0 ON CONFLICT(id) DO NOTHING;`);
+    const sql = '-- One-time initial import. Existing destinations and later deletions are preserved.\n' + inserts.join('\n') + '\nUPDATE redirect_state SET seeded = 1 WHERE singleton = 1;\n';
     await writeFile(join(root, 'admin-service', 'seed.sql'), sql);
     process.stdout.write(`Prepared ${inserts.length} redirects for D1 in admin-service/seed.sql.\n`);
   } else {

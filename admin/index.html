@@ -7,8 +7,8 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://taptap-admin.admin-service.workers.dev; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="theme-color" content="#173ad4">
   <title>Redirects · TapTap Admin</title>
-  <link rel="stylesheet" href="./admin.css">
-  <script src="./admin.js?v=canonical-card-links-1" defer></script>
+  <link rel="stylesheet" href="./admin.css?v=delete-redirects-1">
+  <script src="./admin.js?v=delete-redirects-1" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to redirects</a>
@@ -58,6 +58,18 @@
       <div id="edit-error" class="form-error" role="alert" hidden></div>
       <p id="save-note" class="save-note"></p>
       <div class="dialog-actions"><button id="cancel-edit" type="button" class="button secondary">Cancel</button><button id="save-redirect" type="submit" class="button primary">Save changes <span aria-hidden="true">↗</span></button></div>
+    </form>
+  </dialog>
+
+  <dialog id="delete-dialog" class="delete-dialog" aria-labelledby="delete-title">
+    <form id="delete-form">
+      <div class="dialog-heading"><div><p class="eyebrow">DELETE REDIRECT</p><h2 id="delete-title">Delete redirect?</h2></div><button type="button" id="close-delete" class="icon-button" aria-label="Close delete confirmation">✕</button></div>
+      <p class="delete-description">This permanently removes the redirect from your database. Its card URL will show “Link not found.”</p>
+      <div class="url-preview"><span>Card link that will stop working</span><div><code id="delete-card-url"></code></div></div>
+      <p class="delete-alternative">To pause a card and restore it later, set its status to Inactive instead.</p>
+      <div class="field"><label for="delete-id" id="delete-id-label">Type the card ID to confirm</label><input id="delete-id" autocomplete="off" autocapitalize="none" spellcheck="false" required></div>
+      <div id="delete-error" class="form-error" role="alert" hidden></div>
+      <div class="dialog-actions"><button id="cancel-delete" type="button" class="button secondary">Cancel</button><button id="confirm-delete" type="submit" class="button danger" disabled>Delete permanently</button></div>
     </form>
   </dialog>
 

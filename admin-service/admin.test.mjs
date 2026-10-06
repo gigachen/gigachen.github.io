@@ -42,6 +42,70 @@ async function save(store, destination, extra = {}) {
   const { revision } = await store.read();
   return store.save({ id: 'demo', record: { destination, status: 'active' }, revision, create: false, ...extra });
 }
+function deleteRequest(id, revision, headers = {}) {
+  return new Request(`https://admin.example.com/api/links/${id}`, { method: 'DELETE', headers: { Origin: 'https://admin.example.com', 'X-TapTap-Admin': '1', 'Content-Type': 'application/json', ...headers }, body: JSON.stringify({ revision }) });
+}
+
+test('deleting a redirect updates its revision, returns 404 on the card and survives restart', async (t) => {
+  const { store, open } = await fixture(t);
+  const { revision } = await store.read();
+  const result = await store.remove({ id: 'demo', revision });
+  assert.equal(result.deleted, true);
+  assert.equal(result.revision, String(Number(revision) + 1));
+  assert.equal(await store.get('demo'), null);
+  assert.equal((await redirectWorker.fetch(new Request('https://tap-tap.live/r/demo/'), { DB: store.database })).status, 404);
+  store.close();
+  const reopened = open();
+  assert.equal(await reopened.get('demo'), null);
+  assert.equal((await reopened.read()).revision, result.revision);
+});
+
+test('delete rejects unauthorized, cross-origin, stale, missing and malformed requests', async (t) => {
+  const { store } = await fixture(t);
+  const { revision } = await store.read();
+  const options = { store, authorized: true, mode: 'local' };
+  assert.equal((await handleApi(deleteRequest('demo', revision), { ...options, authorized: false })).status, 401);
+  assert.equal((await handleApi(deleteRequest('demo', revision, { Origin: 'https://evil.example' }), options)).status, 403);
+  assert.equal((await handleApi(deleteRequest('demo', revision, { 'X-TapTap-Admin': '0' }), options)).status, 403);
+  assert.equal((await handleApi(deleteRequest('demo', 'stale'), options)).status, 409);
+  assert.equal((await handleApi(deleteRequest('missing', revision), options)).status, 404);
+  assert.equal((await handleApi(deleteRequest('demo', undefined), options)).status, 400);
+  await assert.rejects(store.remove({ id: '../../escape', revision }), { status: 400 });
+  assert.equal((await store.read()).revision, revision);
+  assert.equal((await store.read()).records.demo.destination, original.demo.destination);
+});
+
+test('concurrent deletion and editing cannot overwrite each other', async (t) => {
+  const { store, open } = await fixture(t);
+  const other = open();
+  const { revision } = await store.read();
+  const results = await Promise.allSettled([
+    store.remove({ id: 'demo', revision }),
+    other.save({ id: 'demo', record: { destination: 'https://example.com/concurrent-edit', status: 'active' }, revision, create: false }),
+  ]);
+  assert.equal(results.filter((result) => result.status === 'fulfilled').length, 1);
+  assert.equal(results.find((result) => result.status === 'rejected').reason.status, 409);
+  assert.equal((await store.read()).revision, String(Number(revision) + 1));
+});
+
+test('hosted deletion supports TapTap CORS and removes only the requested record', async (t) => {
+  const { store } = await fixture(t);
+  const ADMIN_TOKEN = 'delete-admin-key-'.repeat(4);
+  const env = { ADMIN_TOKEN, DB: store.database };
+  const Origin = 'https://tap-tap.live';
+  const preflight = await worker.fetch(new Request('https://admin.example.com/api/links/demo', { method: 'OPTIONS', headers: { Origin, 'Access-Control-Request-Method': 'DELETE', 'Access-Control-Request-Headers': 'authorization, content-type, x-taptap-admin' } }), env);
+  assert.equal(preflight.status, 204);
+  assert.equal(preflight.headers.get('Access-Control-Allow-Origin'), Origin);
+  assert.match(preflight.headers.get('Access-Control-Allow-Methods'), /DELETE/);
+  let { revision } = await store.read();
+  await store.save({ id: 'keep-card', record: { destination: 'https://example.com/keep', status: 'active' }, revision, create: true });
+  ({ revision } = await store.read());
+  const response = await worker.fetch(deleteRequest('demo', revision, { Origin, Authorization: `Bearer ${ADMIN_TOKEN}` }), env);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('Access-Control-Allow-Origin'), Origin);
+  assert.equal((await response.json()).deleted, true);
+  assert.deepEqual(Object.keys((await store.read()).records), ['keep-card']);
+});
 
 test('first launch migrates every source link into a real SQLite file with timestamps', async (t) => {
   const { root, store } = await fixture(t);
@@ -165,6 +229,10 @@ test('D1 schema and seed SQL import repeatedly without resetting an edited desti
     await save(store, 'https://example.com/edited-cloud');
     connection.exec(seed);
     assert.equal((await store.read()).records.demo.destination, 'https://example.com/edited-cloud');
+    await store.remove({ id: 'demo', revision: (await store.read()).revision });
+    connection.exec(seed);
+    assert.equal(await store.get('demo'), null);
+    assert.ok((await store.read()).records.portfolio);
   } finally { connection.close(); }
 });
 
@@ -228,7 +296,7 @@ test('hosted API rejects unrelated origins and unsupported preflights', async (t
     }
   }
   for (const headers of [
-    { 'Access-Control-Request-Method': 'DELETE' },
+    { 'Access-Control-Request-Method': 'POST' },
     { 'Access-Control-Request-Method': 'PUT', 'Access-Control-Request-Headers': 'x-unapproved-header' },
   ]) {
     const response = await worker.fetch(new Request('https://admin.example.com/api/links', { method: 'OPTIONS', headers: { Origin: 'https://tap-tap.live', ...headers } }), env);

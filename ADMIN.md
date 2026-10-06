@@ -1,6 +1,6 @@
 # TapTap database admin
 
-The admin panel reads and writes a redirects database. Every record has a permanent card ID, HTTPS destination, active/inactive status, and creation/update timestamps. Updating a destination leaves the NFC/QR URL unchanged. There are no rename or delete actions for issued card IDs.
+The admin panel reads and writes a redirects database. Every record has a permanent card ID, HTTPS destination, active/inactive status, and creation/update timestamps. Updating a destination leaves the NFC/QR URL unchanged. IDs cannot be renamed. Each row has a Delete action: type the card ID and confirm to permanently remove its database record. Its card URL then shows “Link not found.” Set a card Inactive for a reversible pause instead.
 
 ## Local use
 
@@ -73,7 +73,7 @@ The hosted database is separate from the local file. Initial import is explicit;
    npx wrangler d1 execute taptap-redirects --remote --file=seed.sql
    ```
 
-   The generated SQL uses `ON CONFLICT(id) DO NOTHING`, so rerunning it cannot overwrite an existing production destination. Review the file before importing. It contains only redirect data, never credentials. It is an initial import, not a synchronization mechanism.
+   The generated SQL imports only while the database's `seeded` marker is unset, and uses `ON CONFLICT(id) DO NOTHING`. Rerunning it cannot overwrite an existing destination or recreate later deletions. Review the file before importing. It contains only redirect data, never credentials. It is an initial import, not a synchronization mechanism.
 
 5. Generate a random admin key and keep it in a password manager:
 
@@ -103,7 +103,7 @@ Test exact public card URLs after deployment. The old `gigachen.me` forwarding s
 
 ## Integrity and access
 
-Each database save validates its destination and uses bound SQL parameters. Schema constraints enforce unique IDs, valid status, and ID characters. SQL triggers advance the list revision after every insert/update/delete, including direct database writes. Saves check the expected revision in the mutation statement itself, so concurrent edits cannot silently overwrite newer changes. List reads use a consistent database batch.
+Each database save validates its destination and uses bound SQL parameters. Schema constraints enforce unique IDs, valid status, and ID characters. SQL triggers advance the list revision after every insert/update/delete, including direct database writes. Saves and deletions check the expected revision in the mutation statement itself, so concurrent operations cannot silently overwrite newer changes. List reads use a consistent database batch.
 
 Public redirects need no admin key. They can only read destinations. The admin API requires the configured high-entropy key, permits only the specific TapTap interface origins, and disables caching. The browser keeps the key only in tab memory. Sign out or reload to clear it; rotate `ADMIN_TOKEN` to revoke it. This version does not implement individual admin accounts or billing.
 

@@ -26,10 +26,10 @@ async function adminApi(request, env, url) {
   if (request.method === 'OPTIONS') {
     const method = request.headers.get('Access-Control-Request-Method');
     const requestedHeaders = (request.headers.get('Access-Control-Request-Headers') || '').split(',').map((name) => name.trim().toLowerCase()).filter(Boolean);
-    if (!origin || !['GET', 'PUT'].includes(method) || requestedHeaders.some((name) => !['authorization', 'content-type', 'x-taptap-admin'].includes(name))) {
+    if (!origin || !['GET', 'PUT', 'DELETE'].includes(method) || requestedHeaders.some((name) => !['authorization', 'content-type', 'x-taptap-admin'].includes(name))) {
       return respond(json({ error: 'Unsupported admin request.' }, 403));
     }
-    return respond(new Response(null, { status: 204, headers: { ...adminHeaders, 'Access-Control-Allow-Methods': 'GET, PUT', 'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-TapTap-Admin', 'Access-Control-Max-Age': '600' } }));
+    return respond(new Response(null, { status: 204, headers: { ...adminHeaders, 'Access-Control-Allow-Methods': 'GET, PUT, DELETE', 'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-TapTap-Admin', 'Access-Control-Max-Age': '600' } }));
   }
   const authorized = await validToken(request, env.ADMIN_TOKEN);
   if (!authorized) return respond(json({ error: 'Sign in with your admin access key.' }, 401));

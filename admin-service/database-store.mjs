@@ -20,6 +20,19 @@ export function databaseStore(database) {
       const { results } = await database.prepare('SELECT destination, status FROM redirects WHERE id = ?').bind(id).all();
       return results[0] || null;
     },
+    async remove({ id, revision }) {
+      if (!slugPattern.test(id) || ['constructor', 'prototype', '__proto__'].includes(id)) throw new ApiError(400, 'Choose a different card ID.');
+      const snapshot = await read();
+      if (snapshot.revision !== revision) throw new ApiError(409, 'The redirect list changed. Refresh it before deleting.');
+      if (!Object.hasOwn(snapshot.records, id)) throw new ApiError(404, 'This redirect no longer exists. Refresh the list.');
+      const nextRevision = Number(revision) + 1;
+      if (!Number.isSafeInteger(nextRevision)) throw new ApiError(503, 'The database revision is invalid.');
+      const { results } = await database.prepare(`DELETE FROM redirects
+        WHERE id = ? AND (SELECT revision FROM redirect_state WHERE singleton = 1) = ?
+        RETURNING id`).bind(id, Number(revision)).all();
+      if (results.length !== 1) throw new ApiError(409, 'The redirect list changed while deleting. Refresh before trying again.');
+      return { id, revision: String(nextRevision), deleted: true };
+    },
     async save({ id, record: input, revision, create }) {
       if (!slugPattern.test(id) || ['constructor', 'prototype', '__proto__'].includes(id)) throw new ApiError(400, 'Choose a different card ID.');
       let record;

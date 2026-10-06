@@ -17,7 +17,7 @@ try {
 await mkdir(output, { recursive: true });
 const existing = await readdir(output, { withFileTypes: true });
 for (const entry of existing) {
-  if (entry.isDirectory() && slugPattern.test(entry.name) && !(entry.name in records)) {
+  if (!serviceOrigin && entry.isDirectory() && slugPattern.test(entry.name) && !(entry.name in records)) {
     throw new Error(`Removed link ${entry.name} still has a published page. Set its status to "inactive" instead of deleting it.`);
   }
 }

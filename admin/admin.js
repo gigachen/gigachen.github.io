@@ -3,7 +3,7 @@
   const apiOrigin = ['tap-tap.live', 'www.tap-tap.live'].includes(location.hostname)
     ? 'https://taptap-admin.admin-service.workers.dev' : '';
   const $ = (id) => document.getElementById(id);
-  const state = { links: [], revision: '', filter: 'all', query: '', mode: '', key: '', loading: false, saving: false, editing: null };
+  const state = { links: [], revision: '', filter: 'all', query: '', mode: '', key: '', loading: false, saving: false, editing: null, deleting: null, removing: false };
   const publicUrl = (id) => `${state.mode === 'local' ? location.origin : 'https://tap-tap.live'}/r/${id}/`;
   const icons = {
     card: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h4M8 12h8M8 16h5"/></svg>',
@@ -118,7 +118,14 @@
       edit.setAttribute('aria-label', `Edit redirect ${link.id}`);
       edit.append(icon('edit'), document.createTextNode('Edit'));
       edit.addEventListener('click', () => openEdit(link));
-      actions.append(edit);
+      const remove = node('button', 'edit-button delete-button', 'Delete');
+      remove.type = 'button';
+      remove.disabled = state.mode === 'readonly';
+      remove.setAttribute('aria-label', `Delete redirect ${link.id}`);
+      remove.addEventListener('click', () => openDelete(link));
+      const rowActions = node('div', 'row-actions');
+      rowActions.append(edit, remove);
+      actions.append(rowActions);
       row.append(cardCell, destinationCell, statusCell, actions);
       return row;
     });
@@ -183,6 +190,23 @@
     $('copy-edit-url').disabled = !/^[a-z0-9][a-z0-9_-]{2,31}$/.test(id);
   }
   function closeEdit() { if (!state.saving) $('edit-dialog').close(); }
+  function openDelete(link) {
+    if (state.mode === 'readonly' || !state.revision) return;
+    state.deleting = { ...link, revision: state.revision };
+    $('delete-form').reset();
+    $('delete-title').textContent = `Delete ${link.id}?`;
+    $('delete-card-url').textContent = publicUrl(link.id);
+    $('delete-id-label').textContent = `Type ${link.id} to confirm`;
+    $('delete-error').hidden = true;
+    $('confirm-delete').disabled = true;
+    $('delete-dialog').showModal();
+    $('delete-id').focus();
+  }
+  function closeDelete() {
+    if (state.removing) return;
+    $('delete-dialog').close();
+    state.deleting = null;
+  }
   function lockPanel() {
     state.key = '';
     state.links = [];
@@ -197,6 +221,8 @@
     $('updated-at').textContent = '';
     $('empty-state').hidden = true;
     $('edit-dialog').close();
+    $('delete-dialog').close();
+    state.deleting = null;
     $('access-key').value = '';
     $('login-error').hidden = true;
     if (!$('login-dialog').open) $('login-dialog').showModal();
@@ -237,6 +263,43 @@
   $('close-edit').addEventListener('click', closeEdit);
   $('cancel-edit').addEventListener('click', closeEdit);
   $('edit-dialog').addEventListener('cancel', (event) => { if (state.saving) event.preventDefault(); });
+  $('cancel-delete').addEventListener('click', closeDelete);
+  $('close-delete').addEventListener('click', closeDelete);
+  $('delete-dialog').addEventListener('cancel', (event) => {
+    if (state.removing) event.preventDefault();
+    else state.deleting = null;
+  });
+  $('delete-id').addEventListener('input', () => {
+    $('confirm-delete').disabled = state.removing || $('delete-id').value !== state.deleting?.id;
+  });
+  $('delete-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (state.removing || !state.deleting || $('delete-id').value !== state.deleting.id) return;
+    const { id, revision } = state.deleting;
+    state.removing = true;
+    $('delete-error').hidden = true;
+    for (const control of $('delete-form').querySelectorAll('button, input')) control.disabled = true;
+    $('confirm-delete').textContent = 'Deleting…';
+    try {
+      const result = await api(`/api/links/${encodeURIComponent(id)}`, { method: 'DELETE', body: JSON.stringify({ revision }) });
+      state.links = state.links.filter((link) => link.id !== id);
+      state.revision = result.revision;
+      state.deleting = null;
+      $('delete-dialog').close();
+      render();
+      $('updated-at').textContent = 'Updated just now';
+      toast(`Deleted ${id}. Its card link no longer works.`);
+    } catch (error) {
+      $('delete-error').textContent = error.status === 409 ? `${error.message} Close this dialog and refresh before trying again.` : error.message;
+      $('delete-error').hidden = false;
+      if (error.status === 401) lockPanel();
+    } finally {
+      state.removing = false;
+      for (const control of $('delete-form').querySelectorAll('button, input')) control.disabled = false;
+      $('confirm-delete').textContent = 'Delete permanently';
+      $('confirm-delete').disabled = $('delete-id').value !== state.deleting?.id;
+    }
+  });
   $('edit-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     if (state.saving) return;

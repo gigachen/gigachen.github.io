@@ -31,7 +31,7 @@ To regenerate these forwarding pages:
 npm run generate
 ```
 
-Review, commit, and push the generated pages to `main`. Each card's ID stays the same. Set a card inactive rather than deleting it. The hosted database determines the destination and status, so cached forwarding pages do not retain old destinations. Local SQLite edits are separate from production.
+Review, commit, and push the generated pages to `main`. Each card's ID stays the same. Set a card inactive to pause it, or use Delete in the panel to permanently remove it. Deleted card paths still reach the service and show “Link not found.” The hosted database determines the destination and status, so cached forwarding pages do not retain old destinations. Local SQLite edits are separate from production.
 
 For a direct HTTP `302` at the original addresses, an optional future upgrade is to route `tap-tap.live/r/*` and `www.tap-tap.live/r/*` to the combined D1 Worker. This requires a Cloudflare DNS migration, which has not been performed. Browser forwarding already connects those card paths to D1 with the current Name.com DNS.
 

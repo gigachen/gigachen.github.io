@@ -4,7 +4,7 @@
     ? 'https://taptap-admin.admin-service.workers.dev' : '';
   const $ = (id) => document.getElementById(id);
   const state = { links: [], revision: '', filter: 'all', query: '', mode: '', key: '', loading: false, saving: false, editing: null };
-  const publicUrl = (id) => `${['database', 'local'].includes(state.mode) ? location.origin : 'https://tap-tap.live'}/r/${id}/`;
+  const publicUrl = (id) => `${state.mode === 'local' ? location.origin : 'https://tap-tap.live'}/r/${id}/`;
   const icons = {
     card: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h4M8 12h8M8 16h5"/></svg>',
     copy: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4"/></svg>',

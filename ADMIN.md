@@ -41,7 +41,7 @@ The admin panel is deployed at **https://tap-tap.live/admin/** and stays on that
 
 The initial access key is saved locally in `data/admin-access-key.txt`, which is ignored by Git. Keep it in your password manager and enter it on the hosted panel. It is also configured as the Worker's private `ADMIN_TOKEN` secret.
 
-The API permits browser requests only from the Worker itself and the exact HTTPS `tap-tap.live` and `www.tap-tap.live` origins. It still requires the private admin key for every read and write; CORS does not grant database access. The panel copies card links on the service where it is opened.
+The API permits browser requests only from the Worker itself and the exact HTTPS `tap-tap.live` and `www.tap-tap.live` origins. It still requires the private admin key for every read and write; CORS does not grant database access. Every hosted panel shows and copies permanent `https://tap-tap.live/r/<id>/` card URLs, including when opened on the Cloudflare address. Local development uses local card URLs.
 
 Cloudflare D1 uses the same SQLite schema and prepared queries. `admin-service/worker.mjs` serves the admin panel, protected API, and public `/r/<id>/` redirects. It no longer needs GitHub credentials or commits for each save.
 

@@ -1,0 +1,20 @@
+{
+  "name": "taptap-admin",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-10-06",
+  "workers_dev": true,
+  "assets": {
+    "directory": "../admin",
+    "binding": "ASSETS",
+    "html_handling": "none",
+    "run_worker_first": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "taptap-redirects",
+      "database_id": "81a0969a-bddf-4585-827a-9021fe1335fa",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

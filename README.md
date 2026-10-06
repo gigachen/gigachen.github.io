@@ -4,6 +4,12 @@ A dependency-free concept landing page for the TapTap NFC card, hosted from this
 
 For card URLs and the redirect service, see [REDIRECTS.md](REDIRECTS.md).
 
+## Redirect admin panel
+
+Open [the online admin panel](https://taptap-admin.admin-service.workers.dev/admin/) to manage live redirects stored in Cloudflare D1. GitHub Pages card URLs forward to that service; destination edits and status changes take effect in the database immediately. The access key is kept in the ignored local file `data/admin-access-key.txt`.
+
+For local development, run `npm run admin` and open `http://127.0.0.1:8788/admin/`. This uses a separate SQLite file seeded once from the existing links. [ADMIN.md](ADMIN.md) covers backups, access, and deployment.
+
 ## Local preview
 
 Run `python3 -m http.server 8000` in this directory and open `http://localhost:8000`.
@@ -13,7 +19,7 @@ Run `python3 -m http.server 8000` in this directory and open `http://localhost:8
 - `assets/taptap-preview.png` is the TapTap card concept render.
 - The QR in that render is a visual placeholder and does not work.
 - The one-time and smart-card options are proposals. This site has no checkout, account, or active subscription service.
-- `links.json` and `scripts/generate-redirects.mjs` provide a static redirect prototype; `worker/` contains the HTTP `302` service for a future Cloudflare deployment.
+- `links.json` lists the original cards. `redirect-service.json` configures the hosted service; `npm run generate` generates forwarding pages and the fallback for newly created cards. The hosted admin stores redirects in D1; `worker/` provides HTTP `302` redirects from that database.
 
 ## Publishing and domain
 

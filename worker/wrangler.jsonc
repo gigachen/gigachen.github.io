@@ -3,7 +3,12 @@
   "main": "redirect.js",
   "compatibility_date": "2026-09-29",
   "workers_dev": true,
-  "kv_namespaces": [
-    { "binding": "LINKS" }
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "taptap-redirects",
+      "database_id": "81a0969a-bddf-4585-827a-9021fe1335fa",
+      "migrations_dir": "../admin-service/migrations"
+    }
   ]
 }

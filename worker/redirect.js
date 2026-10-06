@@ -1,12 +1,12 @@
+import { databaseStore } from '../admin-service/database-store.mjs';
+import { validateDestination } from '../scripts/redirect-lib.mjs';
+
 const LINK_PATH = /^\/r\/([a-z0-9][a-z0-9_-]{2,31})\/?$/;
 
 function validDestination(value) {
   if (typeof value !== 'string') return null;
   try {
-    const url = new URL(value);
-    if (url.protocol !== 'https:' || url.username || url.password) return null;
-    if (['tap-tap.live', 'www.tap-tap.live', 'go.tap-tap.live', 'gigachen.me', 'go.gigachen.me'].includes(url.hostname) && url.pathname.startsWith('/r/')) return null;
-    return url.toString();
+    return validateDestination(value);
   } catch {
     return null;
   }
@@ -34,15 +34,10 @@ export default {
     const url = new URL(request.url);
     const match = LINK_PATH.exec(url.pathname);
     if (!match) return messagePage(404, 'Link not found', 'Please check the address on the card.', request.method);
-    if (!env.LINKS || typeof env.LINKS.get !== 'function') {
-      return messagePage(503, 'Link unavailable', 'Please try again shortly.', request.method);
-    }
-
     let record;
     try {
-      const value = await env.LINKS.get(`link:${match[1]}`);
-      if (!value) return messagePage(404, 'Link not found', 'Please check the address on the card.', request.method);
-      record = JSON.parse(value);
+      record = await databaseStore(env.DB).get(match[1]);
+      if (!record) return messagePage(404, 'Link not found', 'Please check the address on the card.', request.method);
     } catch {
       return messagePage(503, 'Link unavailable', 'Please try again shortly.', request.method);
     }

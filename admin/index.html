@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#173ad4">
+  <title>Redirects · TapTap Admin</title>
+  <link rel="stylesheet" href="./admin.css">
+  <script src="./admin.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to redirects</a>
+  <aside class="sidebar" aria-label="Admin navigation">
+    <a class="brand" href="./"><span class="brand-mark" aria-hidden="true">↗</span>taptap<span class="brand-tag">ADMIN</span></a>
+    <div class="workspace"><span class="workspace-icon" aria-hidden="true">T</span><div><strong>TapTap workspace</strong><span>Card management</span></div><span class="workspace-dot" aria-hidden="true"></span></div>
+    <p class="nav-label">WORKSPACE</p>
+    <a class="nav-item selected" href="./" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2"/></svg>Redirects<span id="nav-count">—</span></a>
+    <a class="nav-item" href="https://tap-tap.live/" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3h7v7M21 3l-11 11M10 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5"/></svg>View website<span aria-hidden="true">↗</span></a>
+    <div class="sidebar-note"><span class="note-symbol" aria-hidden="true">✳</span><strong>One card. More possibilities.</strong><p>Keep the card. Change where it takes people.</p><div class="mini-card" aria-hidden="true"><span>taptap</span><b>tap to<br>connect.</b><i>↗</i></div></div>
+    <div class="sidebar-bottom"><span class="avatar">TA</span><div><strong>TapTap admin</strong><span id="session-label">Connecting…</span></div><button id="signout" class="icon-button" aria-label="Sign out" title="Sign out" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H4v16h5M14 8l4 4-4 4M8 12h11"/></svg></button></div>
+  </aside>
+
+  <div class="app">
+    <header class="topbar"><div class="breadcrumb">Workspace<span>/</span><strong>Redirects</strong></div><span class="topbar-label"><span class="small-dot"></span>TapTap Admin</span></header>
+    <main id="main">
+      <div class="page-heading"><div><p class="eyebrow">YOUR CONNECTIONS, IN ONE PLACE</p><h1>Redirects<span>.</span></h1><p>Manage where every tap takes people.</p></div><button id="new-redirect" class="button primary" disabled><span aria-hidden="true">＋</span>New redirect</button></div>
+      <div id="mode-note" class="mode-note" hidden><span class="info-icon" aria-hidden="true">i</span><p id="mode-message"></p></div>
+      <section class="stats" aria-label="Redirect overview">
+        <article class="stat"><div class="stat-top"><span>Total redirects</span><span class="stat-icon blue" aria-hidden="true">↗</span></div><strong id="total-count">—</strong><p>Permanent URLs for your cards</p></article>
+        <article class="stat"><div class="stat-top"><span>Active redirects</span><span class="stat-icon green" aria-hidden="true">✓</span></div><strong id="active-count">—</strong><p><span class="small-dot green-dot"></span>Ready to connect</p></article>
+        <article class="stat"><div class="stat-top"><span>Inactive redirects</span><span class="stat-icon gray" aria-hidden="true">Ⅱ</span></div><strong id="inactive-count">—</strong><p>Paused until you reactivate them</p></article>
+      </section>
+
+      <section class="redirect-panel" aria-labelledby="list-title">
+        <div class="panel-heading"><div><h2 id="list-title">All redirects <span id="list-count">—</span></h2><p>A stable card link. A destination you can change.</p></div><button id="refresh" class="button secondary compact" aria-label="Refresh redirects"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M6 7a7 7 0 0 1 12-1l2 3M18 17a7 7 0 0 1-12 1l-2-3"/></svg>Refresh</button></div>
+        <div class="toolbar"><div class="filters" role="group" aria-label="Filter by status"><button class="filter selected" data-filter="all" aria-pressed="true">All <span id="filter-all">—</span></button><button class="filter" data-filter="active" aria-pressed="false">Active <span id="filter-active">—</span></button><button class="filter" data-filter="inactive" aria-pressed="false">Inactive <span id="filter-inactive">—</span></button></div><label class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input id="search" type="search" placeholder="Search ID or destination…" aria-label="Search redirects"></label></div>
+        <div id="list-error" class="list-error" role="alert" hidden></div>
+        <div class="table-wrap"><table><thead><tr><th scope="col">CARD / REDIRECT</th><th scope="col">DESTINATION</th><th scope="col">STATUS</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead><tbody id="redirect-rows"></tbody></table></div>
+        <div id="empty-state" class="empty-state" hidden><span class="empty-icon" aria-hidden="true">↗</span><h3 id="empty-title">Loading your redirects…</h3><p id="empty-message">Getting the latest card destinations.</p><button id="empty-create" class="button primary" hidden>Create your first redirect</button></div>
+        <div class="panel-footer"><span id="result-count">Loading redirects…</span><span id="updated-at"></span></div>
+      </section>
+      <div class="how-note"><span class="how-icon" aria-hidden="true">↗</span><div><strong>The destination changes. The card link stays the same.</strong><p>Update a destination here without rewriting the NFC card or printing a new QR code.</p></div><a href="https://tap-tap.live/" target="_blank" rel="noopener noreferrer">Meet TapTap <span aria-hidden="true">↗</span></a></div>
+      <footer class="main-footer"><span>TapTap / Admin workspace</span><span>Made for better connections.</span></footer>
+    </main>
+  </div>
+
+  <dialog id="edit-dialog" class="edit-dialog" aria-labelledby="edit-title">
+    <form id="edit-form">
+      <div class="dialog-heading"><div><p class="eyebrow">REDIRECT DETAILS</p><h2 id="edit-title">Edit redirect</h2></div><button type="button" id="close-edit" class="icon-button" aria-label="Close redirect editor">✕</button></div>
+      <p id="edit-description" class="dialog-description">Choose where this card takes people.</p>
+      <div class="field"><label for="card-id">Card ID</label><input id="card-id" name="id" autocomplete="off" pattern="[a-z0-9][a-z0-9_-]{2,31}" minlength="3" maxlength="32" required><p id="id-hint">3–32 lowercase letters, numbers, hyphens, or underscores.</p></div>
+      <div class="url-preview"><span>Permanent card link</span><div><code id="card-url">https://tap-tap.live/r/…/</code><button id="copy-edit-url" class="icon-button" type="button" aria-label="Copy permanent card link" title="Copy card link"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4"/></svg></button></div></div>
+      <div class="flow-line" aria-hidden="true">↓</div>
+      <div class="field"><label for="destination">Destination URL</label><input id="destination" name="destination" type="url" placeholder="https://example.com/your-page" maxlength="2048" autocomplete="off" required><p>The HTTPS page people see after tapping or scanning.</p></div>
+      <fieldset class="status-field"><legend>Redirect status</legend><label class="status-option"><input name="status" type="radio" value="active" checked><span><strong><span class="small-dot green-dot"></span>Active</strong><small>The card opens its destination.</small></span></label><label class="status-option"><input name="status" type="radio" value="inactive"><span><strong><span class="small-dot muted-dot"></span>Inactive</strong><small>The card shows an unavailable page.</small></span></label></fieldset>
+      <div id="edit-error" class="form-error" role="alert" hidden></div>
+      <p id="save-note" class="save-note"></p>
+      <div class="dialog-actions"><button id="cancel-edit" type="button" class="button secondary">Cancel</button><button id="save-redirect" type="submit" class="button primary">Save changes <span aria-hidden="true">↗</span></button></div>
+    </form>
+  </dialog>
+
+  <dialog id="login-dialog" class="login-dialog" aria-labelledby="login-title">
+    <form id="login-form"><span class="login-mark" aria-hidden="true">↗</span><p class="eyebrow">TAPTAP ADMIN</p><h2 id="login-title">Your connections.<br>Your control.</h2><p>Sign in to manage your card destinations.</p><div class="field"><label for="access-key">Admin access key</label><input id="access-key" type="password" autocomplete="current-password" minlength="32" required placeholder="Enter your admin access key"><p>Your key stays in this tab and is cleared when you sign out.</p></div><div id="login-error" class="form-error" role="alert" hidden></div><button id="login-submit" class="button primary" type="submit">Open workspace <span aria-hidden="true">↗</span></button></form>
+  </dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

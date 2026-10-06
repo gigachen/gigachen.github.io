@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>TapTap link</title></head>
+<body><main><h1>Looking for your TapTap link…</h1><p id="message">Please check the address or <a href="/">return to TapTap</a>.</p></main>
+<script>
+const path = location.pathname;
+if (/^\/r\/[a-z0-9][a-z0-9_-]{2,31}\/?$/.test(path)) {
+  const target = "https://taptap-admin.admin-service.workers.dev" + path;
+  const link = document.createElement('a');
+  link.href = target;
+  link.textContent = 'Continue to your card';
+  document.getElementById('message').replaceChildren(link);
+  location.replace(target);
+} else {
+  document.querySelector('h1').textContent = 'Page not found';
+}
+</script>
+</body></html>

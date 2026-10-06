@@ -1,0 +1,15 @@
+{
+  "name": "taptap-website",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.16.0" },
+  "scripts": {
+    "admin": "node admin-service/local.mjs",
+    "database:init": "node scripts/database.mjs init",
+    "database:export": "node scripts/database.mjs export",
+    "database:seed": "node scripts/database.mjs seed",
+    "database:backup": "node scripts/database.mjs backup",
+    "generate": "node scripts/generate-redirects.mjs",
+    "test": "node --test admin-service/*.test.mjs worker/*.test.mjs"
+  }
+}

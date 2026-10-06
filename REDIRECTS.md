@@ -6,66 +6,39 @@ Keep the URL printed in a QR code or written to an NFC card stable:
 https://tap-tap.live/r/card123/
 ```
 
-Previously issued URLs on `gigachen.me` are forwarded by the separate [gigachen-me-redirect](https://github.com/gigachen/gigachen-me-redirect) GitHub Pages site, preserving paths, query strings, and fragments with a browser-side JavaScript redirect.
+The destination is now stored in a database and can change without rewriting the card. See [ADMIN.md](ADMIN.md) for the panel, database backup, import, and deployment instructions.
 
-The destination lives elsewhere and can change without rewriting the card. A one-time card can instead store its final destination directly. The redirect route is for the proposed smart card.
+## Database redirect service
 
-## Use it now on GitHub Pages
+Local development uses SQLite at `data/redirects.sqlite`. Hosted deployment uses Cloudflare D1, bound as `DB`. Both use the schema in `admin-service/migrations/0001_redirects.sql`:
 
-The repository includes a static proof of concept at `/r/demo/`, which opens this website's public GitHub repository. To make a new link:
+- `redirects`: unique card ID, HTTPS destination, active/inactive status, and timestamps.
+- `redirect_state`: revision used to reject concurrent edits, plus the initial import marker.
 
-1. Add a unique 3–32 character lowercase ID to `links.json`. Use letters, numbers, `_`, or `-`, beginning with a letter or number.
-2. Set an HTTPS `destination` and `status` of `active`.
-3. Run `node scripts/generate-redirects.mjs`.
-4. Commit and push both `links.json` and the generated `r/<id>/index.html` to `main`.
-5. Once the page is deployed and HTTPS works, write `https://tap-tap.live/r/<id>/` to the card and generate a real QR code for that URL.
+Run `npm run admin` to import the existing `links.json` records once and open the panel at `http://127.0.0.1:8788/admin/`. Subsequent saves go to the database. Restarting does not reimport JSON.
 
-Example record:
+`worker/redirect.js` serves uncached HTTP `302` redirects directly from the database. An inactive record returns `410`; an unknown card returns `404`. The same handler runs in the local server and the combined admin Worker. The previous KV binding is no longer used.
 
-```json
-"card123": {
-  "destination": "https://example.com/profile",
-  "status": "active"
-}
+The public handler accepts only GET and HEAD and has no write API. Destinations must be HTTPS without embedded credentials and cannot point back to another TapTap redirect. Authenticated admin changes are handled separately by the protected API. Payments, subscriptions, and per-customer management are not implemented.
+
+## Existing GitHub Pages URLs
+
+The public site stays on GitHub Pages. Existing `r/<id>/index.html` pages forward browser visitors to `https://taptap-admin.admin-service.workers.dev/r/<id>/`, which reads D1. Its `404.html` also forwards valid `/r/<id>/` paths, allowing newly created cards to work without another GitHub deployment. Other missing paths remain a normal not-found page. This adds a browser forwarding step before the Worker's uncached HTTP `302`; GitHub Pages itself does not serve a database-backed HTTP redirect.
+
+To regenerate these forwarding pages:
+
+```sh
+npm run generate
 ```
 
-To change the destination, edit that record, run the generator, and push again. To disable it, set `status` to `inactive` and regenerate. Keep the ID in `links.json` so a previously issued card cannot accidentally serve an old page. **Do not print or program physical cards using the placeholder QR in the render.**
+Review, commit, and push the generated pages to `main`. Each card's ID stays the same. Set a card inactive rather than deleting it. The hosted database determines the destination and status, so cached forwarding pages do not retain old destinations. Local SQLite edits are separate from production.
 
-This prototype uses an HTML/JavaScript redirect, so the first response is HTTP `200`, not HTTP `302`. GitHub Pages caches files, and changes can take minutes to reach everyone. `links.json` is public, so do not place secrets or private destinations in it. It has no customer login, subscription checks, or billing integration. **Use it to test the flow; choose the production URL before issuing physical cards.** Do not use the demo ID for a customer card.
+For a direct HTTP `302` at the original addresses, an optional future upgrade is to route `tap-tap.live/r/*` and `www.tap-tap.live/r/*` to the combined D1 Worker. This requires a Cloudflare DNS migration, which has not been performed. Browser forwarding already connects those card paths to D1 with the current Name.com DNS.
 
-## Real redirect service for smart cards
+Previously issued `gigachen.me` URLs are forwarded by the separate [gigachen-me-redirect](https://github.com/gigachen/gigachen-me-redirect) site, preserving paths, query strings, and fragments. That forwarding uses browser-side JavaScript.
 
-`worker/redirect.js` is a Cloudflare Worker that returns an uncached HTTP `302`. It reads each card's destination from Workers KV:
+## Before physical cards
 
-```text
-card → https://go.tap-tap.live/r/card123/ → KV lookup → HTTP 302 → destination
-```
+The domain was changed from `gigachen.me` to `tap-tap.live` on 1 October 2026. DNS validation and the GitHub Pages HTTPS certificate were verified then. Verify each exact public card URL over HTTPS after changing deployment or routing and before issuing cards. Generate a real QR code for that address; the QR in the concept render is a placeholder.
 
-Each KV key is `link:<id>`. Its value is JSON such as:
-
-```json
-{"destination":"https://example.com/profile","status":"active"}
-```
-
-Set `status` to `inactive` to return HTTP `410`. The Worker accepts only HTTPS destinations and has no public write API. Use authenticated Cloudflare tools to change records. An eventual subscription service would update the status after receiving verified billing events; that part is not implemented.
-
-### Deployment path
-
-The domain currently uses Name.com DNS with GitHub Pages A records. The recommended production setup uses `go.tap-tap.live` for redirects and keeps the main `tap-tap.live` website on GitHub Pages:
-
-1. First get `https://tap-tap.live/` working with a valid GitHub Pages certificate. Add `tap-tap.live` as a Cloudflare zone. Copy **all** existing DNS records into Cloudflare, including any mail or verification records. In Name.com, change the domain's nameservers to the Cloudflare nameservers assigned to the zone. This changes DNS hosting, not domain registration.
-2. Keep the apex A records pointing to GitHub Pages as **DNS only** in Cloudflare. The main site can continue to use this repository and its `CNAME` file.
-3. From `worker/`, sign in with `npx wrangler login`, then run `npx wrangler deploy`. The supplied Wrangler configuration deploys a test endpoint on `workers.dev` and provisions the `LINKS` KV binding.
-4. In Cloudflare Workers & Pages → the `taptap-redirect` Worker → Settings → Domains & Routes, add the **Custom Domain** `go.tap-tap.live`. Cloudflare creates the DNS record and certificate for that subdomain. The main site continues to use GitHub Pages.
-5. Add or update a card's record with `npx wrangler kv key put 'link:card123' '{"destination":"https://example.com/profile","status":"active"}' --binding LINKS --remote` from `worker/`.
-6. Verify `curl -I https://go.tap-tap.live/r/card123/` returns `302` and a `Location` header with the intended destination before putting the URL on a physical card.
-
-Moving nameservers should be planned carefully if the domain later has email or other DNS records. Cloudflare KV is eventually consistent, so changes can take up to about 60 seconds to appear everywhere. Neither the Worker nor the static prototype implements payments or per-customer management yet.
-
-## HTTPS before physical cards
-
-The domain was changed from `gigachen.me` to `tap-tap.live` on 1 October 2026. DNS validation succeeded, the certificate was issued, and **Enforce HTTPS** was enabled on 1 October 2026. Verify the exact redirect URL over HTTPS before printing a QR code or programming an NFC card. Do not bypass certificate warnings.
-
-If the endpoint must be exactly `tap-tap.live/r/<id>/`, a Cloudflare Worker route can do that, but the apex would have to be proxied through Cloudflare. That changes how GitHub Pages receives traffic and needs a separate deployment and HTTPS check. The `go` subdomain avoids touching the existing website origin.
-
-References: [GitHub Pages HTTPS](https://docs.github.com/en/pages/getting-started-with-github-pages/securing-your-github-pages-site-with-https), [Cloudflare Worker custom domains](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/), [Wrangler KV commands](https://developers.cloudflare.com/workers/wrangler/commands/kv/), [KV consistency](https://developers.cloudflare.com/kv/api/write-key-value-pairs/).
+References: [D1](https://developers.cloudflare.com/d1/), [Worker routes](https://developers.cloudflare.com/workers/configuration/routing/routes/), [GitHub Pages HTTPS](https://docs.github.com/en/pages/getting-started-with-github-pages/securing-your-github-pages-site-with-https).

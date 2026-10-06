@@ -1,9 +1,7 @@
 (() => {
   'use strict';
-  if (['tap-tap.live', 'www.tap-tap.live', 'gigachen.github.io'].includes(location.hostname)) {
-    location.replace('https://taptap-admin.admin-service.workers.dev/admin/');
-    return;
-  }
+  const apiOrigin = ['tap-tap.live', 'www.tap-tap.live'].includes(location.hostname)
+    ? 'https://taptap-admin.admin-service.workers.dev' : '';
   const $ = (id) => document.getElementById(id);
   const state = { links: [], revision: '', filter: 'all', query: '', mode: '', key: '', loading: false, saving: false, editing: null };
   const publicUrl = (id) => `${['database', 'local'].includes(state.mode) ? location.origin : 'https://tap-tap.live'}/r/${id}/`;
@@ -51,7 +49,7 @@
     catch { toast(`Copy this card link: ${url}`); }
   }
   async function api(path, options = {}) {
-    const response = await fetch(path, {
+    const response = await fetch(apiOrigin + path, {
       cache: 'no-store',
       credentials: 'same-origin',
       ...options,

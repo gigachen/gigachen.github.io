@@ -185,6 +185,58 @@ test('hosted admin fails closed for absent, short, incorrect keys and missing da
   assert.equal((await worker.fetch(new Request('https://admin.example.com/api/links', { headers: { Authorization: `Bearer ${ADMIN_TOKEN}` } }), { ADMIN_TOKEN })).status, 503);
 });
 
+test('TapTap domain can authenticate and save through the hosted API', async (t) => {
+  const { store } = await fixture(t);
+  const ADMIN_TOKEN = 'domain-admin-key-'.repeat(4);
+  const env = { ADMIN_TOKEN, DB: store.database };
+  for (const Origin of ['https://tap-tap.live', 'https://www.tap-tap.live']) {
+    const preflight = await worker.fetch(new Request('https://admin.example.com/api/links/demo', {
+      method: 'OPTIONS', headers: { Origin, 'Access-Control-Request-Method': 'PUT', 'Access-Control-Request-Headers': 'authorization, content-type, x-taptap-admin' },
+    }), env);
+    assert.equal(preflight.status, 204);
+    assert.equal(preflight.headers.get('Access-Control-Allow-Origin'), Origin);
+    assert.equal(preflight.headers.get('Access-Control-Allow-Credentials'), null);
+    assert.match(preflight.headers.get('Access-Control-Allow-Headers'), /Authorization/);
+    const denied = await worker.fetch(new Request('https://admin.example.com/api/session', { headers: { Origin } }), env);
+    assert.equal(denied.status, 401);
+    assert.equal(denied.headers.get('Access-Control-Allow-Origin'), Origin);
+    const session = await worker.fetch(new Request('https://admin.example.com/api/session', { headers: { Origin, Authorization: `Bearer ${ADMIN_TOKEN}` } }), env);
+    assert.equal(session.status, 200);
+    assert.equal((await session.json()).mode, 'database');
+    assert.equal(session.headers.get('Vary'), 'Origin');
+  }
+  const { revision } = await store.read();
+  const saved = await worker.fetch(request('demo', { destination: 'https://example.com/from-domain', status: 'active', revision, create: false }, {
+    Origin: 'https://tap-tap.live', Authorization: `Bearer ${ADMIN_TOKEN}`,
+  }), env);
+  assert.equal(saved.status, 200);
+  assert.equal(saved.headers.get('Access-Control-Allow-Origin'), 'https://tap-tap.live');
+  assert.equal((await store.read()).records.demo.destination, 'https://example.com/from-domain');
+});
+
+test('hosted API rejects unrelated origins and unsupported preflights', async (t) => {
+  const { store } = await fixture(t);
+  const ADMIN_TOKEN = 'domain-admin-key-'.repeat(4);
+  const env = { ADMIN_TOKEN, DB: store.database };
+  for (const Origin of ['https://evil.example', 'https://tap-tap.live.evil.example', 'http://tap-tap.live', 'null']) {
+    for (const method of ['GET', 'OPTIONS']) {
+      const response = await worker.fetch(new Request('https://admin.example.com/api/links', {
+        method, headers: { Origin, Authorization: `Bearer ${ADMIN_TOKEN}`, 'Access-Control-Request-Method': 'GET' },
+      }), env);
+      assert.equal(response.status, 403);
+      assert.equal(response.headers.get('Access-Control-Allow-Origin'), null);
+    }
+  }
+  for (const headers of [
+    { 'Access-Control-Request-Method': 'DELETE' },
+    { 'Access-Control-Request-Method': 'PUT', 'Access-Control-Request-Headers': 'x-unapproved-header' },
+  ]) {
+    const response = await worker.fetch(new Request('https://admin.example.com/api/links', { method: 'OPTIONS', headers: { Origin: 'https://tap-tap.live', ...headers } }), env);
+    assert.equal(response.status, 403);
+  }
+  assert.equal((await store.read()).records.demo.destination, original.demo.destination);
+});
+
 test('hosted admin and public redirect worker share the same database', async (t) => {
   const { store } = await fixture(t);
   const ADMIN_TOKEN = 'test-only-access-key-'.repeat(3);

@@ -16,7 +16,7 @@ export function json(body, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...adminHeaders, 'Content-Type': 'application/json; charset=utf-8' } });
 }
 
-export async function handleApi(request, { store, authorized, mode }) {
+export async function handleApi(request, { store, authorized, mode, allowedOrigins }) {
   const url = new URL(request.url);
   try {
     if (!authorized) throw new ApiError(401, 'Sign in with your admin access key.');
@@ -28,7 +28,7 @@ export async function handleApi(request, { store, authorized, mode }) {
     const match = /^\/api\/links\/([a-z0-9][a-z0-9_-]{2,31})$/.exec(url.pathname);
     if (!match) throw new ApiError(404, 'This admin endpoint does not exist.');
     if (request.method !== 'PUT') return new Response(null, { status: 405, headers: { ...adminHeaders, Allow: 'PUT' } });
-    if (request.headers.get('Origin') !== url.origin || request.headers.get('X-TapTap-Admin') !== '1') throw new ApiError(403, 'Save changes from the TapTap admin panel.');
+    if (!(allowedOrigins || [url.origin]).includes(request.headers.get('Origin')) || request.headers.get('X-TapTap-Admin') !== '1') throw new ApiError(403, 'Save changes from the TapTap admin panel.');
     if (!(request.headers.get('Content-Type') || '').startsWith('application/json')) throw new ApiError(415, 'Use JSON to save a redirect.');
     const raw = await request.text();
     if (raw.length > 8192) throw new ApiError(413, 'The redirect is too large.');

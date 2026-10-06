@@ -6,7 +6,7 @@ For card URLs and the redirect service, see [REDIRECTS.md](REDIRECTS.md).
 
 ## Redirect admin panel
 
-Open [the online admin panel](https://taptap-admin.admin-service.workers.dev/admin/) to manage live redirects stored in Cloudflare D1. GitHub Pages card URLs forward to that service; destination edits and status changes take effect in the database immediately. The access key is kept in the ignored local file `data/admin-access-key.txt`.
+Open [the online admin panel](https://tap-tap.live/admin/) to manage live redirects stored in Cloudflare D1. The interface stays on `tap-tap.live` and connects securely to the database API. GitHub Pages card URLs forward to the redirect service; destination edits and status changes take effect in the database immediately. The access key is kept in the ignored local file `data/admin-access-key.txt`.
 
 For local development, run `npm run admin` and open `http://127.0.0.1:8788/admin/`. This uses a separate SQLite file seeded once from the existing links. [ADMIN.md](ADMIN.md) covers backups, access, and deployment.
 

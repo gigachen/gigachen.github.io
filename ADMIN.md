@@ -37,11 +37,11 @@ This is an explicit snapshot operation; the database remains the source of truth
 
 ## Hosted database service
 
-The admin panel is deployed at **https://taptap-admin.admin-service.workers.dev/admin/**. Its public card redirects use `https://taptap-admin.admin-service.workers.dev/r/<id>/`. The panel copies links on the service where it is opened, so those links read the hosted database immediately. Existing `tap-tap.live` card pages and the fallback for new card paths forward browser visitors to this same service.
+The admin panel is deployed at **https://tap-tap.live/admin/** and stays on that address. GitHub Pages serves the interface; its authenticated requests use the Cloudflare database API. The same interface is also available at `https://taptap-admin.admin-service.workers.dev/admin/`. Existing `tap-tap.live` card pages and the fallback for new card paths forward browser visitors to this service.
 
 The initial access key is saved locally in `data/admin-access-key.txt`, which is ignored by Git. Keep it in your password manager and enter it on the hosted panel. It is also configured as the Worker's private `ADMIN_TOKEN` secret.
 
-Opening `https://tap-tap.live/admin/` forwards to the hosted panel too.
+The API permits browser requests only from the Worker itself and the exact HTTPS `tap-tap.live` and `www.tap-tap.live` origins. It still requires the private admin key for every read and write; CORS does not grant database access. The panel copies card links on the service where it is opened.
 
 Cloudflare D1 uses the same SQLite schema and prepared queries. `admin-service/worker.mjs` serves the admin panel, protected API, and public `/r/<id>/` redirects. It no longer needs GitHub credentials or commits for each save.
 
@@ -105,7 +105,7 @@ Test exact public card URLs after deployment. The old `gigachen.me` forwarding s
 
 Each database save validates its destination and uses bound SQL parameters. Schema constraints enforce unique IDs, valid status, and ID characters. SQL triggers advance the list revision after every insert/update/delete, including direct database writes. Saves check the expected revision in the mutation statement itself, so concurrent edits cannot silently overwrite newer changes. List reads use a consistent database batch.
 
-Public redirects need no admin key. They can only read destinations. The admin API requires the configured high-entropy key, does not permit cross-origin access, and disables caching. The browser keeps the key only in tab memory. Sign out or reload to clear it; rotate `ADMIN_TOKEN` to revoke it. This version does not implement individual admin accounts or billing.
+Public redirects need no admin key. They can only read destinations. The admin API requires the configured high-entropy key, permits only the specific TapTap interface origins, and disables caching. The browser keeps the key only in tab memory. Sign out or reload to clear it; rotate `ADMIN_TOKEN` to revoke it. This version does not implement individual admin accounts or billing.
 
 ## Verify
 

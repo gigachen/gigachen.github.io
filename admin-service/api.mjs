@@ -25,7 +25,7 @@ export async function handleApi(request, { store, authorized, mode, allowedOrigi
       const snapshot = await store.read();
       return json({ revision: snapshot.revision, links: Object.entries(snapshot.records).map(([id, record]) => ({ ...record, id })), mode });
     }
-    const match = /^\/api\/links\/([a-z0-9][a-z0-9_-]{2,31})$/.exec(url.pathname);
+    const match = /^\/api\/links\/([^/]+)$/.exec(url.pathname);
     if (!match) throw new ApiError(404, 'This admin endpoint does not exist.');
     if (!['PUT', 'DELETE'].includes(request.method)) return new Response(null, { status: 405, headers: { ...adminHeaders, Allow: 'PUT, DELETE' } });
     if (!(allowedOrigins || [url.origin]).includes(request.headers.get('Origin')) || request.headers.get('X-TapTap-Admin') !== '1') throw new ApiError(403, 'Save changes from the TapTap admin panel.');
@@ -36,7 +36,8 @@ export async function handleApi(request, { store, authorized, mode, allowedOrigi
     try { body = JSON.parse(raw); } catch { throw new ApiError(400, 'The redirect data is not valid JSON.'); }
     if (!body || typeof body !== 'object' || Array.isArray(body) || typeof body.revision !== 'string') throw new ApiError(400, 'Reload the list before changing it.');
     const id = match[1];
-    if (!slugPattern.test(id) || ['constructor', 'prototype', '__proto__'].includes(id)) throw new ApiError(400, 'Choose a different card ID.');
+    if (!slugPattern.test(id)) throw new ApiError(400, 'Use 3–32 lowercase letters, numbers, hyphens, or underscores for the card ID, starting with a letter or number.');
+    if (['constructor', 'prototype', '__proto__'].includes(id)) throw new ApiError(400, 'Choose a different card ID.');
     if (request.method === 'DELETE') return json({ ...await store.remove({ id, revision: body.revision }), mode });
     if (typeof body.create !== 'boolean') throw new ApiError(400, 'Reload the list before saving.');
     let record;

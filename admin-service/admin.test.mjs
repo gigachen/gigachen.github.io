@@ -46,6 +46,35 @@ function deleteRequest(id, revision, headers = {}) {
   return new Request(`https://admin.example.com/api/links/${id}`, { method: 'DELETE', headers: { Origin: 'https://admin.example.com', 'X-TapTap-Admin': '1', 'Content-Type': 'application/json', ...headers }, body: JSON.stringify({ revision }) });
 }
 
+test('invalid card IDs return validation errors and the normalized screenshot ID can be created', async (t) => {
+  const { store } = await fixture(t);
+  const options = { store, authorized: true, mode: 'local' };
+  const { revision } = await store.read();
+  const destination = 'https://www.instagram.com/lawrance_velasques/';
+  const body = { destination, status: 'active', revision, create: true };
+  for (const id of ['COO', 'co', '-coo', 'co%20o']) {
+    const response = await handleApi(request(id, body), options);
+    assert.equal(response.status, 400);
+    assert.match((await response.json()).error, /card ID/);
+  }
+  assert.equal((await store.read()).revision, revision);
+  const response = await handleApi(request('coo', body), options);
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).id, 'coo');
+  const redirect = await redirectWorker.fetch(new Request('https://tap-tap.live/r/coo/'), { DB: store.database });
+  assert.equal(redirect.status, 302);
+  assert.equal(redirect.headers.get('Location'), destination);
+});
+
+test('card ID HTML pattern compiles with browser Unicode-set rules and accepts hyphens', async () => {
+  const html = await readFile(new URL('../admin/index.html', import.meta.url), 'utf8');
+  const pattern = /<input id="card-id"[^>]* pattern="([^"]+)"/.exec(html)?.[1];
+  assert.ok(pattern);
+  const browserPattern = new RegExp(`^(?:${pattern})$`, 'v');
+  for (const id of ['coo', 'co-o', 'co_o', 'card123']) assert.equal(browserPattern.test(id), true);
+  for (const id of ['COO', 'co', '-coo', 'co o', 'co/o']) assert.equal(browserPattern.test(id), false);
+});
+
 test('deleting a redirect updates its revision, returns 404 on the card and survives restart', async (t) => {
   const { store, open } = await fixture(t);
   const { revision } = await store.read();

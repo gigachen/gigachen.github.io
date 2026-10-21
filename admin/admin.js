@@ -3,6 +3,8 @@
   const apiOrigin = ['tap-tap.live', 'www.tap-tap.live'].includes(location.hostname)
     ? 'https://taptap-admin.admin-service.workers.dev' : '';
   const $ = (id) => document.getElementById(id);
+  const cardIdPattern = /^[a-z0-9][a-z0-9_-]{2,31}$/;
+  const reservedCardIds = ['constructor', 'prototype', '__proto__'];
   const state = { links: [], revision: '', filter: 'all', query: '', mode: '', key: '', loading: false, saving: false, editing: null, deleting: null, removing: false };
   const publicUrl = (id) => `${state.mode === 'local' ? location.origin : 'https://tap-tap.live'}/r/${id}/`;
   const icons = {
@@ -175,7 +177,7 @@
     $('edit-description').textContent = link ? `Update the destination for ${link.id}.` : 'Give your card a permanent link and a destination.';
     $('card-id').readOnly = !!link;
     $('card-id').value = link?.id || '';
-    $('id-hint').textContent = link ? 'This ID stays fixed so existing cards keep working.' : '3–32 lowercase letters, numbers, hyphens, or underscores.';
+    $('id-hint').textContent = link ? 'This ID stays fixed so existing cards keep working.' : '3–32 letters, numbers, hyphens, or underscores. Letters are saved in lowercase.';
     $('destination').value = link?.destination || '';
     $('edit-form').elements.status.value = link?.status || 'active';
     $('save-redirect').textContent = link ? 'Save changes ↗' : 'Create redirect ↗';
@@ -185,9 +187,17 @@
     (link ? $('destination') : $('card-id')).focus();
   }
   function updateCardPreview() {
-    const id = $('card-id').value;
+    const input = $('card-id');
+    if (!input.readOnly && input.value !== input.value.toLowerCase()) {
+      const start = input.selectionStart, end = input.selectionEnd;
+      input.value = input.value.toLowerCase();
+      input.setSelectionRange(start, end);
+    }
+    const id = input.value;
+    const valid = cardIdPattern.test(id) && !reservedCardIds.includes(id);
+    input.setCustomValidity(id && !valid ? 'Use 3–32 letters, numbers, hyphens, or underscores, starting with a letter or number. Choose a non-reserved card ID.' : '');
     $('card-url').textContent = publicUrl(id || '…');
-    $('copy-edit-url').disabled = !/^[a-z0-9][a-z0-9_-]{2,31}$/.test(id);
+    $('copy-edit-url').disabled = !valid;
   }
   function closeEdit() { if (!state.saving) $('edit-dialog').close(); }
   function openDelete(link) {
@@ -304,6 +314,14 @@
     event.preventDefault();
     if (state.saving) return;
     $('edit-error').hidden = true;
+    updateCardPreview();
+    const id = $('card-id').value;
+    if (!cardIdPattern.test(id) || reservedCardIds.includes(id)) {
+      $('edit-error').textContent = $('card-id').validationMessage || 'Enter a valid card ID.';
+      $('edit-error').hidden = false;
+      $('card-id').focus();
+      return;
+    }
     const destination = $('destination').value.trim();
     if (!safeUrl(destination)) {
       $('edit-error').textContent = 'Enter a complete HTTPS URL without embedded credentials.';
@@ -311,7 +329,6 @@
       $('destination').focus();
       return;
     }
-    const id = $('card-id').value;
     const status = $('edit-form').elements.status.value;
     state.saving = true;
     for (const control of $('edit-form').querySelectorAll('button, input')) control.disabled = true;

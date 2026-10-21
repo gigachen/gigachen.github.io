@@ -5,8 +5,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { request as httpRequest } from 'node:http';
 import { DatabaseSync, backup } from 'node:sqlite';
+import vm from 'node:vm';
 import { localStore, startLocalServer } from './local.mjs';
-import { sqliteAdapter } from './sqlite-store.mjs';
+import { sqliteAdapter, migrateSqlite } from './sqlite-store.mjs';
 import { handleApi } from './api.mjs';
 import { databaseStore } from './database-store.mjs';
 import worker from './worker.mjs';
@@ -52,7 +53,7 @@ test('invalid card IDs return validation errors and the normalized screenshot ID
   const { revision } = await store.read();
   const destination = 'https://www.instagram.com/lawrance_velasques/';
   const body = { destination, status: 'active', revision, create: true };
-  for (const id of ['COO', 'co', '-coo', 'co%20o']) {
+  for (const id of ['COO', '-coo', 'co%20o', 'a'.repeat(33)]) {
     const response = await handleApi(request(id, body), options);
     assert.equal(response.status, 400);
     assert.match((await response.json()).error, /card ID/);
@@ -71,8 +72,81 @@ test('card ID HTML pattern compiles with browser Unicode-set rules and accepts h
   const pattern = /<input id="card-id"[^>]* pattern="([^"]+)"/.exec(html)?.[1];
   assert.ok(pattern);
   const browserPattern = new RegExp(`^(?:${pattern})$`, 'v');
-  for (const id of ['coo', 'co-o', 'co_o', 'card123']) assert.equal(browserPattern.test(id), true);
-  for (const id of ['COO', 'co', '-coo', 'co o', 'co/o']) assert.equal(browserPattern.test(id), false);
+  for (const id of ['a', '1', 'co', 'coo', 'co-o', 'co_o', 'card123']) assert.equal(browserPattern.test(id), true);
+  for (const id of ['', 'COO', '-coo', 'co o', 'co/o', 'a'.repeat(33)]) assert.equal(browserPattern.test(id), false);
+});
+
+test('upgrading an existing database preserves records, timestamps, revisions and seeding', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'taptap-short-ids-'));
+  const databasePath = join(root, 'legacy.sqlite');
+  let store;
+  try {
+    await writeFile(join(root, 'links.json'), JSON.stringify(original));
+    const legacy = new DatabaseSync(databasePath);
+    legacy.exec(await readFile(new URL('./migrations/0001_redirects.sql', import.meta.url), 'utf8'));
+    legacy.prepare('INSERT INTO redirects (id, destination, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)').run('old-card', 'https://example.com/legacy', 'inactive', '2020-01-01T00:00:00.000Z', '2021-01-01T00:00:00.000Z');
+    legacy.exec('UPDATE redirect_state SET seeded = 1 WHERE singleton = 1');
+    assert.throws(() => legacy.prepare('INSERT INTO redirects (id, destination, status) VALUES (?, ?, ?)').run('a', 'https://example.com', 'active'));
+    const before = await databaseStore(sqliteAdapter(legacy)).read();
+    legacy.close();
+    store = localStore(root, { databasePath });
+    assert.deepEqual(await store.read(), before);
+    assert.equal(store.connection.prepare('SELECT seeded FROM redirect_state').get().seeded, 1);
+    assert.equal(store.connection.prepare('SELECT COUNT(*) AS count FROM local_schema_migrations').get().count, 2);
+    assert.equal(store.connection.prepare('PRAGMA integrity_check').get().integrity_check, 'ok');
+    await store.save({ id: 'a', record: { destination: 'https://example.com/single', status: 'active' }, revision: before.revision, create: true });
+    const afterCreate = await store.read();
+    assert.equal(Number(afterCreate.revision), Number(before.revision) + 1);
+    store.close();
+    store = localStore(root, { databasePath });
+    assert.deepEqual(await store.read(), afterCreate);
+    await store.save({ id: 'a', record: { destination: 'https://example.com/changed', status: 'inactive' }, revision: afterCreate.revision, create: false });
+    await store.remove({ id: 'a', revision: (await store.read()).revision });
+    assert.equal(Number((await store.read()).revision), Number(before.revision) + 3);
+    assert.deepEqual((await store.read()).records, before.records);
+  } finally {
+    if (store?.connection.isOpen) store.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('short IDs can be created, edited and deleted through the admin API', async (t) => {
+  const { store } = await fixture(t);
+  const options = { store, authorized: true, mode: 'database' };
+  for (const id of ['a', 'ab', '0']) {
+    let revision = (await store.read()).revision;
+    const created = await handleApi(request(id, { destination: 'https://example.com/short', status: 'active', revision, create: true }), options);
+    assert.equal(created.status, 200);
+    revision = (await created.json()).revision;
+    const changed = await handleApi(request(id, { destination: 'https://example.com/updated', status: 'active', revision, create: false }), options);
+    assert.equal(changed.status, 200);
+    revision = (await changed.json()).revision;
+    const removed = await handleApi(deleteRequest(id, revision), options);
+    assert.equal(removed.status, 200);
+    assert.equal(await store.get(id), null);
+  }
+});
+
+test('GitHub Pages fallback forwards one-character cards while rejecting malformed paths', async () => {
+  const html = await readFile(new URL('../404.html', import.meta.url), 'utf8');
+  const script = /<script>([\s\S]*?)<\/script>/.exec(html)?.[1];
+  assert.ok(script);
+  for (const path of ['/r/a', '/r/a/', '/r/ab/', '/r/0/']) {
+    let destination;
+    vm.runInNewContext(script, {
+      location: { pathname: path, replace(value) { destination = value; } },
+      document: { createElement: () => ({}), getElementById: () => ({ replaceChildren() {} }), querySelector: () => ({}) },
+    });
+    assert.equal(destination, 'https://taptap-admin.admin-service.workers.dev' + path);
+  }
+  for (const path of ['/r/', '/r/-/', '/r/a/extra', '/r/' + 'a'.repeat(33)]) {
+    let redirected = false;
+    vm.runInNewContext(script, {
+      location: { pathname: path, replace() { redirected = true; } },
+      document: { querySelector: () => ({}) },
+    });
+    assert.equal(redirected, false);
+  }
 });
 
 test('deleting a redirect updates its revision, returns 404 on the card and survives restart', async (t) => {
@@ -250,7 +324,7 @@ test('SQLite backups preserve the saved destinations', async (t) => {
 test('D1 schema and seed SQL import repeatedly without resetting an edited destination', async () => {
   const connection = new DatabaseSync(':memory:');
   try {
-    connection.exec(await readFile(new URL('./migrations/0001_redirects.sql', import.meta.url), 'utf8'));
+    migrateSqlite(connection);
     const seed = await readFile(new URL('./seed.sql', import.meta.url), 'utf8');
     connection.exec(seed);
     const store = databaseStore(sqliteAdapter(connection));
@@ -381,4 +455,12 @@ test('local HTTP access stays protected and saved destinations return HTTP 302 i
   const redirect = await fetch(`${base}/r/demo/`, { redirect: 'manual' });
   assert.equal(redirect.status, 302);
   assert.equal(redirect.headers.get('Location'), 'https://example.com/http-test');
+  const { revision } = await response.json();
+  const short = await fetch(`${base}/api/links/a`, { method: 'PUT', headers: { Cookie: cookie, Origin: base, 'Content-Type': 'application/json', 'X-TapTap-Admin': '1' }, body: JSON.stringify({ destination: 'https://example.com/single', status: 'active', revision, create: true }) });
+  assert.equal(short.status, 200);
+  for (const path of ['/r/a', '/r/a/']) {
+    const shortRedirect = await fetch(base + path, { redirect: 'manual' });
+    assert.equal(shortRedirect.status, 302);
+    assert.equal(shortRedirect.headers.get('Location'), 'https://example.com/single');
+  }
 });

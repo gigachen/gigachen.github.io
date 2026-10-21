@@ -1,4 +1,4 @@
-export const slugPattern = /^[a-z0-9][a-z0-9_-]{2,31}$/;
+export const slugPattern = /^[a-z0-9][a-z0-9_-]{0,31}$/;
 
 export function validateDestination(value, { allowService = false } = {}) {
   if (typeof value !== 'string' || value.length > 2048) throw new Error('Enter an HTTPS destination of at most 2,048 characters.');

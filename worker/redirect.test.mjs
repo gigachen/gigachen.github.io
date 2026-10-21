@@ -1,14 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import { readFile } from 'node:fs/promises';
-import { sqliteAdapter } from '../admin-service/sqlite-store.mjs';
+import { sqliteAdapter, migrateSqlite } from '../admin-service/sqlite-store.mjs';
 import worker from './redirect.js';
 
 async function makeEnv(t, records = {}) {
   const connection = new DatabaseSync(':memory:');
   t.after(() => connection.close());
-  connection.exec(await readFile(new URL('../admin-service/migrations/0001_redirects.sql', import.meta.url), 'utf8'));
+  migrateSqlite(connection);
   const insert = connection.prepare('INSERT INTO redirects (id, destination, status) VALUES (?, ?, ?)');
   for (const [id, record] of Object.entries(records)) insert.run(id, record.destination, record.status);
   return { connection, DB: sqliteAdapter(connection) };
@@ -29,6 +28,20 @@ test('inactive and unknown database links do not redirect', async (t) => {
   const env = await makeEnv(t, { card123: { destination: 'https://example.com', status: 'inactive' } });
   assert.equal((await worker.fetch(new Request('https://tap-tap.live/r/card123'), env)).status, 410);
   assert.equal((await worker.fetch(new Request('https://tap-tap.live/r/unknown'), env)).status, 404);
+});
+
+test('one- and two-character card paths redirect with and without trailing slash', async (t) => {
+  const env = await makeEnv(t, {
+    a: { destination: 'https://example.com/single', status: 'active' },
+    ab: { destination: 'https://example.com/double', status: 'active' },
+  });
+  for (const id of ['a', 'ab']) {
+    for (const suffix of ['', '/']) {
+      const response = await worker.fetch(new Request(`https://tap-tap.live/r/${id}${suffix}`), env);
+      assert.equal(response.status, 302);
+      assert.equal(response.headers.get('Location'), `https://example.com/${id === 'a' ? 'single' : 'double'}`);
+    }
+  }
 });
 
 test('unsafe database destinations, malformed paths and missing bindings fail safely', async (t) => {

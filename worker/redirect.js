@@ -1,7 +1,7 @@
 import { databaseStore } from '../admin-service/database-store.mjs';
 import { validateDestination } from '../scripts/redirect-lib.mjs';
 
-const LINK_PATH = /^\/r\/([a-z0-9][a-z0-9_-]{2,31})\/?$/;
+const LINK_PATH = /^\/r\/([a-z0-9][a-z0-9_-]{0,31})\/?$/;
 
 function validDestination(value) {
   if (typeof value !== 'string') return null;

@@ -2,6 +2,8 @@
 
 The admin panel reads and writes a redirects database. Every record has a permanent card ID, HTTPS destination, active/inactive status, and creation/update timestamps. Updating a destination leaves the NFC/QR URL unchanged. IDs cannot be renamed. Each row has a Delete action: type the card ID and confirm to permanently remove its database record. Its card URL then shows “Link not found.” Set a card Inactive for a reversible pause instead.
 
+Card IDs accept 1–32 lowercase letters, numbers, hyphens or underscores, starting with a letter or number. The form converts uppercase letters to lowercase. One-letter IDs such as `a` are supported.
+
 ## Local use
 
 Use Node.js 22.16 or newer, then run:
@@ -13,6 +15,8 @@ npm run admin
 Open `http://127.0.0.1:8788/admin/`. No npm installation is needed. The local server stores records in **`data/redirects.sqlite`**. On the first start it imports every existing link from `links.json`, in one transaction. Later starts use the existing database; they never reimport stale JSON. Database files are ignored by Git and cannot be downloaded through the admin server.
 
 A save commits to SQLite immediately. Local `/r/<id>/` routes read that database and return uncached HTTP `302` redirects. Inactive records return `410`; unknown IDs return `404`. The admin and card service use the same database. `links.json` and generated HTML pages are now legacy snapshots and are not rewritten on every save.
+
+Local startup applies ordered schema migrations once, in transactions. The short-ID migration preserves existing destinations, statuses, timestamps, the list revision and the import marker. Hosted D1 uses the same migration files through Wrangler.
 
 **The local database does not update production.** Live cards use the separate hosted D1 database. The panel identifies local database mode explicitly.
 

@@ -10,7 +10,7 @@ The destination is now stored in a database and can change without rewriting the
 
 ## Database redirect service
 
-Local development uses SQLite at `data/redirects.sqlite`. Hosted deployment uses Cloudflare D1, bound as `DB`. Both use the schema in `admin-service/migrations/0001_redirects.sql`:
+Local development uses SQLite at `data/redirects.sqlite`. Hosted deployment uses Cloudflare D1, bound as `DB`. Both apply the ordered SQL migrations in `admin-service/migrations/`; card IDs support 1–32 characters:
 
 - `redirects`: unique card ID, HTTPS destination, active/inactive status, and timestamps.
 - `redirect_state`: revision used to reject concurrent edits, plus the initial import marker.

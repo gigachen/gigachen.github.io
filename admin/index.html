@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#173ad4">
   <title>Redirects · TapTap Admin</title>
   <link rel="stylesheet" href="./admin.css?v=delete-redirects-1">
-  <script src="./admin.js?v=card-id-validation-1" defer></script>
+  <script src="./admin.js?v=short-card-ids-1" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to redirects</a>
@@ -50,7 +50,7 @@
     <form id="edit-form">
       <div class="dialog-heading"><div><p class="eyebrow">REDIRECT DETAILS</p><h2 id="edit-title">Edit redirect</h2></div><button type="button" id="close-edit" class="icon-button" aria-label="Close redirect editor">✕</button></div>
       <p id="edit-description" class="dialog-description">Choose where this card takes people.</p>
-      <div class="field"><label for="card-id">Card ID</label><input id="card-id" name="id" autocomplete="off" autocapitalize="none" spellcheck="false" pattern="[a-z0-9][a-z0-9_\x2D]{2,31}" minlength="3" maxlength="32" required><p id="id-hint">3–32 letters, numbers, hyphens, or underscores. Letters are saved in lowercase.</p></div>
+      <div class="field"><label for="card-id">Card ID</label><input id="card-id" name="id" autocomplete="off" autocapitalize="none" spellcheck="false" pattern="[a-z0-9][a-z0-9_\x2D]{0,31}" minlength="1" maxlength="32" required><p id="id-hint">1–32 letters, numbers, hyphens, or underscores. Letters are saved in lowercase.</p></div>
       <div class="url-preview"><span>Permanent card link</span><div><code id="card-url">https://tap-tap.live/r/…/</code><button id="copy-edit-url" class="icon-button" type="button" aria-label="Copy permanent card link" title="Copy card link"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4"/></svg></button></div></div>
       <div class="flow-line" aria-hidden="true">↓</div>
       <div class="field"><label for="destination">Destination URL</label><input id="destination" name="destination" type="url" placeholder="https://example.com/your-page" maxlength="2048" autocomplete="off" required><p>The HTTPS page people see after tapping or scanning.</p></div>

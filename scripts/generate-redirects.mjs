@@ -41,7 +41,7 @@ if (serviceOrigin) {
 <body><main><h1>Looking for your TapTap link…</h1><p id="message">Please check the address or <a href="/">return to TapTap</a>.</p></main>
 <script>
 const path = location.pathname;
-if (/^\\/r\\/[a-z0-9][a-z0-9_-]{2,31}\\/?$/.test(path)) {
+if (/^\\/r\\/[a-z0-9][a-z0-9_-]{0,31}\\/?$/.test(path)) {
   const target = ${JSON.stringify(serviceOrigin)} + path;
   const link = document.createElement('a');
   link.href = target;

@@ -3,7 +3,7 @@
   const apiOrigin = ['tap-tap.live', 'www.tap-tap.live'].includes(location.hostname)
     ? 'https://taptap-admin.admin-service.workers.dev' : '';
   const $ = (id) => document.getElementById(id);
-  const cardIdPattern = /^[a-z0-9][a-z0-9_-]{2,31}$/;
+  const cardIdPattern = /^[a-z0-9][a-z0-9_-]{0,31}$/;
   const reservedCardIds = ['constructor', 'prototype', '__proto__'];
   const state = { links: [], revision: '', filter: 'all', query: '', mode: '', key: '', loading: false, saving: false, editing: null, deleting: null, removing: false };
   const publicUrl = (id) => `${state.mode === 'local' ? location.origin : 'https://tap-tap.live'}/r/${id}/`;
@@ -177,7 +177,7 @@
     $('edit-description').textContent = link ? `Update the destination for ${link.id}.` : 'Give your card a permanent link and a destination.';
     $('card-id').readOnly = !!link;
     $('card-id').value = link?.id || '';
-    $('id-hint').textContent = link ? 'This ID stays fixed so existing cards keep working.' : '3–32 letters, numbers, hyphens, or underscores. Letters are saved in lowercase.';
+    $('id-hint').textContent = link ? 'This ID stays fixed so existing cards keep working.' : '1–32 letters, numbers, hyphens, or underscores. Letters are saved in lowercase.';
     $('destination').value = link?.destination || '';
     $('edit-form').elements.status.value = link?.status || 'active';
     $('save-redirect').textContent = link ? 'Save changes ↗' : 'Create redirect ↗';
@@ -195,7 +195,7 @@
     }
     const id = input.value;
     const valid = cardIdPattern.test(id) && !reservedCardIds.includes(id);
-    input.setCustomValidity(id && !valid ? 'Use 3–32 letters, numbers, hyphens, or underscores, starting with a letter or number. Choose a non-reserved card ID.' : '');
+    input.setCustomValidity(id && !valid ? 'Use 1–32 letters, numbers, hyphens, or underscores, starting with a letter or number. Choose a non-reserved card ID.' : '');
     $('card-url').textContent = publicUrl(id || '…');
     $('copy-edit-url').disabled = !valid;
   }

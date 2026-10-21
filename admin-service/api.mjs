@@ -36,7 +36,7 @@ export async function handleApi(request, { store, authorized, mode, allowedOrigi
     try { body = JSON.parse(raw); } catch { throw new ApiError(400, 'The redirect data is not valid JSON.'); }
     if (!body || typeof body !== 'object' || Array.isArray(body) || typeof body.revision !== 'string') throw new ApiError(400, 'Reload the list before changing it.');
     const id = match[1];
-    if (!slugPattern.test(id)) throw new ApiError(400, 'Use 3–32 lowercase letters, numbers, hyphens, or underscores for the card ID, starting with a letter or number.');
+    if (!slugPattern.test(id)) throw new ApiError(400, 'Use 1–32 lowercase letters, numbers, hyphens, or underscores for the card ID, starting with a letter or number.');
     if (['constructor', 'prototype', '__proto__'].includes(id)) throw new ApiError(400, 'Choose a different card ID.');
     if (request.method === 'DELETE') return json({ ...await store.remove({ id, revision: body.revision }), mode });
     if (typeof body.create !== 'boolean') throw new ApiError(400, 'Reload the list before saving.');

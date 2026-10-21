@@ -1,5 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
-import { readFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, readdirSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { databaseStore } from './database-store.mjs';
 import { validateRecords, validateRecord } from '../scripts/redirect-lib.mjs';
@@ -28,12 +28,27 @@ export function sqliteAdapter(connection) {
   };
 }
 
+export function migrateSqlite(connection) {
+  connection.exec('CREATE TABLE IF NOT EXISTS local_schema_migrations (name TEXT PRIMARY KEY NOT NULL)');
+  const files = readdirSync(new URL('./migrations/', import.meta.url)).filter((name) => /^\d{4}_[a-z0-9_]+\.sql$/.test(name)).sort();
+  for (const name of files) {
+    connection.exec('BEGIN IMMEDIATE');
+    try {
+      if (!connection.prepare('SELECT 1 FROM local_schema_migrations WHERE name = ?').get(name)) {
+        connection.exec(readFileSync(new URL(`./migrations/${name}`, import.meta.url), 'utf8'));
+        connection.prepare('INSERT INTO local_schema_migrations (name) VALUES (?)').run(name);
+      }
+      connection.exec('COMMIT');
+    } catch (error) { connection.exec('ROLLBACK'); throw error; }
+  }
+}
+
 export function localStore(root, { databasePath = join(root, 'data', 'redirects.sqlite') } = {}) {
   mkdirSync(dirname(databasePath), { recursive: true });
   const connection = new DatabaseSync(databasePath);
   try {
     connection.exec('PRAGMA busy_timeout = 5000; PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
-    connection.exec(readFileSync(new URL('./migrations/0001_redirects.sql', import.meta.url), 'utf8'));
+    migrateSqlite(connection);
     // Seed once, in a transaction. A restart never reimports stale JSON.
     connection.exec('BEGIN IMMEDIATE');
     try {

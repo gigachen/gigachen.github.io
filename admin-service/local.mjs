@@ -46,7 +46,7 @@ export async function startLocalServer({ root = projectRoot, port = Number(proce
       } else if (url.pathname === '/admin') {
         response = new Response(null, { status: 302, headers: { Location: '/admin/' } });
       } else {
-        const match = /^\/r\/([a-z0-9][a-z0-9_-]{2,31})\/?$/.exec(url.pathname);
+        const match = /^\/r\/([a-z0-9][a-z0-9_-]{0,31})\/?$/.exec(url.pathname);
         if (match) {
           response = await redirectWorker.fetch(new Request(url, { method: incoming.method }), { DB: store.database });
         } else {

@@ -25,9 +25,17 @@ export async function handleApi(request, { store, authorized, mode, allowedOrigi
       const snapshot = await store.read();
       return json({ revision: snapshot.revision, links: Object.entries(snapshot.records).map(([id, record]) => ({ ...record, id })), mode });
     }
-    const match = /^\/api\/links\/([^/]+)$/.exec(url.pathname);
+    const match = /^\/api\/links\/([^/]+)(\/history)?$/.exec(url.pathname);
     if (!match) throw new ApiError(404, 'This admin endpoint does not exist.');
-    if (!['PUT', 'DELETE'].includes(request.method)) return new Response(null, { status: 405, headers: { ...adminHeaders, Allow: 'PUT, DELETE' } });
+    const [, id, history] = match;
+    const methods = history ? ['GET', 'PUT'] : ['PUT', 'DELETE'];
+    if (!methods.includes(request.method)) return new Response(null, { status: 405, headers: { ...adminHeaders, Allow: methods.join(', ') } });
+    if (history && request.method === 'GET') {
+      const cursor = url.searchParams.get('before');
+      const before = cursor === null ? null : Number(cursor);
+      if (cursor !== null && (!/^\d+$/.test(cursor) || !Number.isSafeInteger(before) || before < 1)) throw new ApiError(400, 'Invalid history cursor.');
+      return json(await store.history({ id, before }));
+    }
     if (!(allowedOrigins || [url.origin]).includes(request.headers.get('Origin')) || request.headers.get('X-TapTap-Admin') !== '1') throw new ApiError(403, 'Save changes from the TapTap admin panel.');
     if (!(request.headers.get('Content-Type') || '').startsWith('application/json')) throw new ApiError(415, 'Use JSON to save a redirect.');
     const raw = await request.text();
@@ -35,9 +43,12 @@ export async function handleApi(request, { store, authorized, mode, allowedOrigi
     let body;
     try { body = JSON.parse(raw); } catch { throw new ApiError(400, 'The redirect data is not valid JSON.'); }
     if (!body || typeof body !== 'object' || Array.isArray(body) || typeof body.revision !== 'string') throw new ApiError(400, 'Reload the list before changing it.');
-    const id = match[1];
     if (!slugPattern.test(id)) throw new ApiError(400, 'Use 1–32 lowercase letters, numbers, hyphens, or underscores for the card ID, starting with a letter or number.');
     if (['constructor', 'prototype', '__proto__'].includes(id)) throw new ApiError(400, 'Choose a different card ID.');
+    if (history) {
+      if (!Number.isSafeInteger(body.version) || body.version < 1) throw new ApiError(400, 'Choose a destination version to restore.');
+      return json({ ...await store.restore({ id, version: body.version, revision: body.revision }), id, mode });
+    }
     if (request.method === 'DELETE') return json({ ...await store.remove({ id, revision: body.revision }), mode });
     if (typeof body.create !== 'boolean') throw new ApiError(400, 'Reload the list before saving.');
     let record;

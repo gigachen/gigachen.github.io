@@ -7,8 +7,8 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://taptap-admin.admin-service.workers.dev; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="theme-color" content="#173ad4">
   <title>Redirects · TapTap Admin</title>
-  <link rel="stylesheet" href="./admin.css?v=portfolio-destinations-1">
-  <script src="./admin.js?v=portfolio-destinations-1" defer></script>
+  <link rel="stylesheet" href="./admin.css?v=redirect-history-1">
+  <script src="./admin.js?v=redirect-history-1" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to redirects</a>
@@ -74,10 +74,24 @@
     </form>
   </dialog>
 
+  <dialog id="history-dialog" class="history-dialog" aria-labelledby="history-title">
+    <div class="dialog-heading">
+      <div><h2 id="history-title">Destination history</h2><p id="history-card"></p></div>
+      <button type="button" id="close-history" class="icon-button" aria-label="Close destination history">✕</button>
+    </div>
+    <div class="history-toolbar">
+      <p id="history-status" role="status"></p>
+      <button type="button" id="refresh-history" class="button secondary">Refresh history</button>
+    </div>
+    <div id="history-error" class="form-error" role="alert" hidden></div>
+    <ol id="history-list" class="history-list" aria-label="Saved destinations"></ol>
+    <button type="button" id="older-history" class="button secondary" hidden>Load older versions</button>
+  </dialog>
+
   <dialog id="delete-dialog" class="delete-dialog" aria-labelledby="delete-title">
     <form id="delete-form">
       <div class="dialog-heading"><div><p class="eyebrow">DELETE REDIRECT</p><h2 id="delete-title">Delete redirect?</h2></div><button type="button" id="close-delete" class="icon-button" aria-label="Close delete confirmation">✕</button></div>
-      <p class="delete-description">This permanently removes the redirect from your database. Its card URL will show “Link not found.”</p>
+      <p class="delete-description">This permanently removes the redirect and its destination history. Its card URL will show “Link not found.”</p>
       <div class="url-preview"><span>Card link that will stop working</span><div><code id="delete-card-url"></code></div></div>
       <p class="delete-alternative">To pause a card and restore it later, set its status to Inactive instead.</p>
       <div class="field"><label for="delete-id" id="delete-id-label">Type the card ID to confirm</label><input id="delete-id" autocomplete="off" autocapitalize="none" spellcheck="false" required></div>

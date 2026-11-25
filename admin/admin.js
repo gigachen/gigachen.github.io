@@ -7,7 +7,7 @@
   const reservedCardIds = ['constructor', 'prototype', '__proto__'];
   const portfolioId = 'gigachen-portfolio';
   const destinationOptions = $('quick-destinations').querySelectorAll('button');
-  const state = { links: [], revision: '', filter: 'all', query: '', mode: '', key: '', loading: false, saving: false, editing: null, deleting: null, removing: false };
+  const state = { links: [], revision: '', filter: 'all', query: '', mode: '', key: '', loading: false, saving: false, editing: null, deleting: null, removing: false, history: null };
   const publicUrl = (id) => `${state.mode === 'local' ? location.origin : 'https://tap-tap.live'}/r/${id}/`;
   const icons = {
     card: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h4M8 12h8M8 16h5"/></svg>',
@@ -134,13 +134,19 @@
       edit.setAttribute('aria-label', `Edit redirect ${link.id}`);
       edit.append(icon('edit'), document.createTextNode('Edit'));
       edit.addEventListener('click', () => openEdit(link));
+      const history = node('button', 'edit-button', 'History');
+      history.type = 'button';
+      history.id = `history-button-${link.id}`;
+      history.disabled = state.mode === 'readonly';
+      history.setAttribute('aria-label', `Destination history for ${link.id}`);
+      history.addEventListener('click', () => openHistory(link.id));
       const remove = node('button', 'edit-button delete-button', 'Delete');
       remove.type = 'button';
       remove.disabled = state.mode === 'readonly';
       remove.setAttribute('aria-label', `Delete redirect ${link.id}`);
       remove.addEventListener('click', () => openDelete(link));
       const rowActions = node('div', 'row-actions');
-      rowActions.append(edit, remove);
+      rowActions.append(edit, history, remove);
       actions.append(rowActions);
       row.append(cardCell, destinationCell, statusCell, actions);
       return row;
@@ -217,6 +223,98 @@
     $('copy-edit-url').disabled = !valid;
   }
   function closeEdit() { if (!state.saving) $('edit-dialog').close(); }
+  function openHistory(id) {
+    if (!state.revision || state.loading || state.saving || state.removing) return;
+    const history = { id, path: `/api/links/${encodeURIComponent(id)}/history`, destination: '', nextBefore: null, loading: false, restoring: false };
+    state.history = history;
+    $('history-card').textContent = `/${id}`;
+    $('history-list').replaceChildren();
+    $('history-dialog').showModal();
+    loadHistory(history);
+  }
+  function updateHistoryControls(history) {
+    if (state.history !== history) return;
+    const busy = history.loading || history.restoring;
+    $('close-history').disabled = history.restoring;
+    $('refresh-history').disabled = busy;
+    $('older-history').hidden = history.nextBefore === null;
+    $('older-history').disabled = busy;
+    $('history-list').setAttribute('aria-busy', busy);
+    for (const button of $('history-list').querySelectorAll('button')) button.disabled = busy;
+  }
+  function showHistoryError(error) {
+    if (error.status === 401) lockPanel();
+    else {
+      $('history-error').textContent = error.message;
+      $('history-error').hidden = false;
+    }
+  }
+  async function loadHistory(history, { before = null, refreshLinks = false } = {}) {
+    if (history.loading) return;
+    history.loading = true;
+    updateHistoryControls(history);
+    $('history-error').hidden = true;
+    $('history-status').textContent = 'Loading history…';
+    try {
+      if (refreshLinks) await loadLinks();
+      if (state.history !== history) return;
+      const data = await api(history.path + (before === null ? '' : `?before=${before}`));
+      if (state.history !== history) return;
+      if (before === null) {
+        history.destination = data.destination;
+        $('history-list').replaceChildren();
+      }
+      history.nextBefore = data.nextBefore;
+      const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'medium' });
+      for (const version of data.versions) {
+        const row = node('li', 'history-row');
+        const detail = node('div', 'history-detail');
+        const url = safeUrl(version.destination);
+        const time = node('time', 'history-time', dateFormat.format(new Date(version.recorded_at)));
+        time.dateTime = version.recorded_at;
+        detail.append(url ? externalLink(version.destination, url.href) : node('span', '', version.destination), time);
+        row.append(detail);
+        const isCurrentUrl = version.destination === history.destination;
+        if (isCurrentUrl && !$('history-list').children.length) row.append(node('span', 'history-current', 'Current URL'));
+        if (!isCurrentUrl) {
+          const restore = node('button', 'button secondary', 'Restore');
+          restore.type = 'button';
+          restore.setAttribute('aria-label', `Restore ${version.destination}`);
+          restore.addEventListener('click', () => restoreHistory(history, version.version));
+          row.append(restore);
+        }
+        $('history-list').append(row);
+      }
+      $('history-status').textContent = $('history-list').children.length ? '' : 'No destinations have been recorded yet.';
+    } catch (error) {
+      if (state.history !== history) return;
+      $('history-status').textContent = '';
+      showHistoryError(error);
+    } finally {
+      history.loading = false;
+      updateHistoryControls(history);
+    }
+  }
+  async function restoreHistory(history, version) {
+    if (state.history !== history || history.loading || history.restoring) return;
+    history.restoring = true;
+    updateHistoryControls(history);
+    $('history-error').hidden = true;
+    $('history-status').textContent = 'Restoring destination…';
+    try {
+      const result = await api(history.path, { method: 'PUT', body: JSON.stringify({ version, revision: state.revision }) });
+      applySavedRecord(history.id, result);
+      await loadHistory(history);
+      if (state.history === history) $('history-status').textContent = result.changed ? 'Destination restored.' : 'This URL is already current.';
+    } catch (error) {
+      $('history-status').textContent = '';
+      showHistoryError(error);
+    } finally {
+      history.restoring = false;
+      updateHistoryControls(history);
+      if (state.history === history) $('close-history').focus();
+    }
+  }
   function openDelete(link) {
     if (state.mode === 'readonly' || !state.revision || state.saving) return;
     state.deleting = { ...link, revision: state.revision };
@@ -251,6 +349,8 @@
     $('empty-state').hidden = true;
     $('edit-dialog').close();
     $('delete-dialog').close();
+    state.history = null;
+    $('history-dialog').close();
     state.deleting = null;
     $('access-key').value = '';
     $('login-error').hidden = true;
@@ -313,6 +413,16 @@
   $('close-edit').addEventListener('click', closeEdit);
   $('cancel-edit').addEventListener('click', closeEdit);
   $('edit-dialog').addEventListener('cancel', (event) => { if (state.saving) event.preventDefault(); });
+  $('close-history').addEventListener('click', () => $('history-dialog').close());
+  $('history-dialog').addEventListener('cancel', (event) => { if (state.history?.restoring) event.preventDefault(); });
+  $('history-dialog').addEventListener('close', () => {
+    if ($('history-dialog').open) return;
+    const history = state.history;
+    state.history = null;
+    if (history) ($(`history-button-${history.id}`) || $('search')).focus();
+  });
+  $('refresh-history').addEventListener('click', () => loadHistory(state.history, { refreshLinks: true }));
+  $('older-history').addEventListener('click', () => loadHistory(state.history, { before: state.history.nextBefore }));
   $('cancel-delete').addEventListener('click', closeDelete);
   $('close-delete').addEventListener('click', closeDelete);
   $('delete-dialog').addEventListener('cancel', (event) => {
@@ -354,6 +464,10 @@
   });
   async function saveRedirect(id, destination, status, create) {
     const result = await api(`/api/links/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify({ destination, status, revision: state.revision, create }) });
+    applySavedRecord(id, result);
+    return result;
+  }
+  function applySavedRecord(id, result) {
     const existing = state.links.findIndex((link) => link.id === id);
     const saved = { ...result.record, id };
     if (existing >= 0) state.links[existing] = saved;
@@ -363,7 +477,6 @@
     if (id === portfolioId) $('quick-destinations-error').hidden = true;
     render();
     $('updated-at').textContent = 'Updated just now';
-    return result;
   }
   $('edit-form').addEventListener('submit', async (event) => {
     event.preventDefault();

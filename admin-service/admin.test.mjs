@@ -92,7 +92,9 @@ test('upgrading an existing database preserves records, timestamps, revisions an
     store = localStore(root, { databasePath });
     assert.deepEqual(await store.read(), before);
     assert.equal(store.connection.prepare('SELECT seeded FROM redirect_state').get().seeded, 1);
-    assert.equal(store.connection.prepare('SELECT COUNT(*) AS count FROM local_schema_migrations').get().count, 2);
+    assert.equal(store.connection.prepare('SELECT COUNT(*) AS count FROM local_schema_migrations').get().count, 3);
+    const legacyHistory = await store.history({ id: 'old-card' });
+    assert.deepEqual(legacyHistory.versions.map(({ destination }) => destination), ['https://example.com/legacy']);
     assert.equal(store.connection.prepare('PRAGMA integrity_check').get().integrity_check, 'ok');
     await store.save({ id: 'a', record: { destination: 'https://example.com/single', status: 'active' }, revision: before.revision, create: true });
     const afterCreate = await store.read();
@@ -100,6 +102,7 @@ test('upgrading an existing database preserves records, timestamps, revisions an
     store.close();
     store = localStore(root, { databasePath });
     assert.deepEqual(await store.read(), afterCreate);
+    assert.deepEqual(await store.history({ id: 'old-card' }), legacyHistory);
     await store.save({ id: 'a', record: { destination: 'https://example.com/changed', status: 'inactive' }, revision: afterCreate.revision, create: false });
     await store.remove({ id: 'a', revision: (await store.read()).revision });
     assert.equal(Number((await store.read()).revision), Number(before.revision) + 3);
@@ -108,6 +111,74 @@ test('upgrading an existing database preserves records, timestamps, revisions an
     if (store?.connection.isOpen) store.close();
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test('destination history supports undo, preserves status, and rejects stale or cross-card restores', async (t) => {
+  const { store, open } = await fixture(t);
+  const options = { store, authorized: true, mode: 'local' };
+  const historyUrl = 'https://admin.example.com/api/links/demo/history';
+  const initial = await store.history({ id: 'demo' });
+  const oldVersion = initial.versions[0].version;
+  assert.equal(initial.destination, original.demo.destination);
+  assert.equal((await handleApi(new Request(historyUrl), { ...options, authorized: false })).status, 401);
+
+  const destination = 'https://example.com/new-destination';
+  const changed = await save(store, destination);
+  await save(store, destination, { record: { destination, status: 'inactive' } });
+  const dateSortedHistory = await store.history({ id: 'demo' });
+  assert.deepEqual(dateSortedHistory.versions.map((entry) => entry.destination), [destination, original.demo.destination]);
+
+  const restoreRequest = (version, revision, headers) => request('demo/history', { version, revision }, headers);
+  const stale = await handleApi(restoreRequest(oldVersion, changed.revision), options);
+  assert.equal(stale.status, 409);
+  assert.deepEqual(await store.history({ id: 'demo' }), dateSortedHistory);
+
+  const { revision } = await store.read();
+  const other = await store.save({ id: 'other', record: original.demo, revision, create: true });
+  const otherVersion = (await store.history({ id: 'other' })).versions[0].version;
+  assert.equal((await handleApi(restoreRequest(otherVersion, other.revision), options)).status, 404);
+  assert.equal((await handleApi(restoreRequest(oldVersion, other.revision, { Origin: 'https://unknown.example' }), options)).status, 403);
+
+  const restore = await handleApi(restoreRequest(oldVersion, other.revision), options);
+  assert.equal(restore.status, 200);
+  const restored = await restore.json();
+  assert.equal(restored.record.status, 'inactive');
+  assert.equal(restored.record.destination, original.demo.destination);
+  const redirect = await redirectWorker.fetch(new Request('https://tap-tap.live/r/demo/'), { DB: store.database });
+  assert.equal(redirect.status, 410);
+
+  const unchanged = await store.restore({ id: 'demo', version: oldVersion, revision: restored.revision });
+  assert.equal(unchanged.changed, false);
+  assert.equal(unchanged.revision, restored.revision);
+  const reopened = open();
+  assert.deepEqual((await reopened.history({ id: 'demo' })).versions.map((entry) => entry.destination), [original.demo.destination, destination, original.demo.destination]);
+  const undo = await reopened.restore({ id: 'demo', version: dateSortedHistory.versions[0].version, revision: restored.revision });
+  assert.equal(undo.record.destination, destination);
+  assert.equal(undo.record.status, 'inactive');
+});
+
+test('history pages include all destinations and deletion clears only the removed card history', async (t) => {
+  const { store } = await fixture(t);
+  const update = store.connection.prepare('UPDATE redirects SET destination = ? WHERE id = ?');
+  for (let i = 0; i < 28; i++) update.run(`https://example.com/${i}`, 'demo');
+  const options = { store, authorized: true, mode: 'local' };
+  const url = 'https://admin.example.com/api/links/demo/history';
+  const first = await (await handleApi(new Request(url), options)).json();
+  const second = await (await handleApi(new Request(`${url}?before=${first.nextBefore}`), options)).json();
+  assert.equal(first.versions.length, 25);
+  assert.equal(second.nextBefore, null);
+  assert.deepEqual([...first.versions, ...second.versions].map((entry) => entry.destination), [
+    ...Array.from({ length: 28 }, (_, i) => `https://example.com/${27 - i}`), original.demo.destination,
+  ]);
+  assert.equal((await handleApi(new Request(`${url}?before=0`), options)).status, 400);
+
+  const other = await store.save({ id: 'other', record: original.demo, revision: (await store.read()).revision, create: true });
+  const deleted = await store.remove({ id: 'demo', revision: other.revision });
+  assert.equal((await handleApi(new Request(url), options)).status, 404);
+  assert.equal(store.connection.prepare('SELECT count(*) AS count FROM redirect_history').get().count, 1);
+  const recreated = await store.save({ id: 'demo', record: original.demo, revision: deleted.revision, create: true });
+  await assert.rejects(store.restore({ id: 'demo', version: first.versions[0].version, revision: recreated.revision }), { status: 404 });
+  assert.equal((await store.history({ id: 'demo' })).versions.length, 1);
 });
 
 test('short IDs can be created, edited and deleted through the admin API', async (t) => {

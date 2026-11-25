@@ -36,5 +36,58 @@ table{table-layout:fixed}th:first-child{width:34%}th:nth-child(2){width:34%}th:n
 .quick-destinations .form-error { flex: 0 0 100%; margin: 0; }
 @media (max-width: 600px) {
   .quick-destinations { padding: 14px 12px; }
+  tbody tr { grid-template-columns: minmax(0, 1fr) auto; }
+}
+.history-dialog {
+  width: 620px;
+  max-width: calc(100% - 32px);
+  max-height: calc(100dvh - 32px);
+  padding: 26px;
+  border-radius: 13px;
+}
+.history-dialog #history-card { margin: 7px 0 0; color: #5d6989; font-size: 13px; }
+.history-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 18px 0 12px;
+}
+.history-toolbar .button { margin-left: auto; }
+#history-status { margin: 0; color: #52628a; font-size: 12px; }
+.history-list { margin: 0; padding: 0; list-style: none; }
+.history-list:empty { display: none; }
+.history-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+.history-detail { min-width: 0; font-size: 13px; overflow-wrap: anywhere; }
+.history-detail a { color: var(--blue); }
+.history-detail a:hover { text-decoration: underline; }
+.history-time { display: block; margin-top: 5px; color: #5d6989; font-size: 11px; }
+.history-current {
+  flex: none;
+  padding: 6px 9px;
+  border-radius: 6px;
+  color: var(--blue);
+  background: #edf0ff;
+  font-size: 11px;
+  font-weight: 600;
+}
+.history-dialog .button { min-height: 44px; }
+#older-history { margin-top: 12px; }
+@media (min-width: 601px) {
+  th:first-child { width: 32%; }
+  th:nth-child(2) { width: 30%; }
+  th:nth-child(3) { width: 14%; }
+  th:last-child { width: 24%; }
+}
+@media (max-width: 600px) {
+  .history-dialog { padding: 19px; }
+  .history-dialog .button { padding: 0 11px; }
 }
 .row-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:6px}td:last-child .row-actions .edit-button{margin-left:0}.delete-button{color:#a94858;border-color:#f0dce1}.delete-button:hover:not(:disabled){color:#992d40;border-color:#d89aa7;background:#fff6f7}.button.danger{color:#fff;background:#b6384c;border:1px solid #b6384c}.button.danger:hover:not(:disabled){background:#992d40;border-color:#992d40}.delete-dialog{width:460px;max-width:calc(100% - 32px);border-radius:13px}.delete-dialog form{padding:30px}.delete-description,.delete-alternative{font-size:12px;line-height:1.7;color:#7c879e;margin:18px 0}.delete-description{color:#8e3c4a}.delete-alternative{font-size:11px}.delete-dialog .field{margin-top:23px;margin-bottom:18px}.delete-dialog .dialog-heading h2{overflow-wrap:anywhere}

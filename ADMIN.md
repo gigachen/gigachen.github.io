@@ -4,6 +4,8 @@ The admin panel reads and writes a redirects database. Every record has a perman
 
 Card IDs accept 1–32 lowercase letters, numbers, hyphens or underscores, starting with a letter or number. The form converts uppercase letters to lowercase. One-letter IDs such as `a` are supported.
 
+Open **History** on a redirect to see its saved destinations and restore an earlier URL. Restoring preserves the card’s status and records the restored URL as a new entry, so you can switch back again. For existing redirects, history starts with the destination saved when the history migration runs. Permanently deleting a redirect also deletes its history.
+
 ## Local use
 
 Use Node.js 22.16 or newer, then run:

@@ -1,7 +1,7 @@
 import { readFile, readdir, mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
-import { slugPattern, validateDestination, validateRecords, redirectPage } from './redirect-lib.mjs';
+import { slugPattern, validateDestination, validateRecords, redirectPage, redirectFallbackPage } from './redirect-lib.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const output = join(root, 'r');
@@ -35,23 +35,5 @@ for (const [slug, record] of Object.entries(records)) {
 }
 
 if (serviceOrigin) {
-  await writeFile(join(root, '404.html'), `<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>TapTap link</title></head>
-<body><main><h1>Looking for your TapTap link…</h1><p id="message">Please check the address or <a href="/">return to TapTap</a>.</p></main>
-<script>
-const path = location.pathname;
-if (/^\\/r\\/[a-z0-9][a-z0-9_-]{0,31}\\/?$/.test(path)) {
-  const target = ${JSON.stringify(serviceOrigin)} + path;
-  const link = document.createElement('a');
-  link.href = target;
-  link.textContent = 'Continue to your card';
-  document.getElementById('message').replaceChildren(link);
-  location.replace(target);
-} else {
-  document.querySelector('h1').textContent = 'Page not found';
-}
-</script>
-</body></html>
-`);
+  await writeFile(join(root, '404.html'), redirectFallbackPage(serviceOrigin));
 }

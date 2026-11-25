@@ -131,21 +131,30 @@ test('GitHub Pages fallback forwards one-character cards while rejecting malform
   const html = await readFile(new URL('../404.html', import.meta.url), 'utf8');
   const script = /<script>([\s\S]*?)<\/script>/.exec(html)?.[1];
   assert.ok(script);
-  for (const path of ['/r/a', '/r/a/', '/r/ab/', '/r/0/']) {
+  const cardPaths = ['/r/a', '/r/a/', '/r/ab/', '/r/0/'];
+  const missingPaths = ['/missing', '/r/', '/r/-/', '/r/a/extra', '/r/' + 'a'.repeat(33)];
+  for (const path of [...cardPaths, ...missingPaths]) {
     let destination;
+    const elements = {
+      main: { dataset: {} },
+      h1: { textContent: 'Page not found' },
+      'main a': { href: '/' },
+    };
     vm.runInNewContext(script, {
       location: { pathname: path, replace(value) { destination = value; } },
-      document: { createElement: () => ({}), getElementById: () => ({ replaceChildren() {} }), querySelector: () => ({}) },
+      document: { querySelector: (selector) => elements[selector] },
     });
-    assert.equal(destination, 'https://taptap-admin.admin-service.workers.dev' + path);
-  }
-  for (const path of ['/r/', '/r/-/', '/r/a/extra', '/r/' + 'a'.repeat(33)]) {
-    let redirected = false;
-    vm.runInNewContext(script, {
-      location: { pathname: path, replace() { redirected = true; } },
-      document: { querySelector: () => ({}) },
-    });
-    assert.equal(redirected, false);
+    if (cardPaths.includes(path)) {
+      assert.equal(destination, 'https://taptap-admin.admin-service.workers.dev' + path);
+      assert.equal(elements['main a'].href, destination);
+      assert.equal(elements.main.dataset.redirecting, '');
+      assert.match(elements.h1.textContent, /Opening/);
+    } else {
+      assert.equal(destination, undefined);
+      assert.equal(elements['main a'].href, '/');
+      assert.equal(elements.main.dataset.redirecting, undefined);
+      assert.equal(elements.h1.textContent, 'Page not found');
+    }
   }
 });
 

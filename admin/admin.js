@@ -5,6 +5,8 @@
   const $ = (id) => document.getElementById(id);
   const cardIdPattern = /^[a-z0-9][a-z0-9_-]{0,31}$/;
   const reservedCardIds = ['constructor', 'prototype', '__proto__'];
+  const portfolioId = 'gigachen-portfolio';
+  const destinationOptions = $('quick-destinations').querySelectorAll('button');
   const state = { links: [], revision: '', filter: 'all', query: '', mode: '', key: '', loading: false, saving: false, editing: null, deleting: null, removing: false };
   const publicUrl = (id) => `${state.mode === 'local' ? location.origin : 'https://tap-tap.live'}/r/${id}/`;
   const icons = {
@@ -78,7 +80,19 @@
     $('signout').hidden = mode !== 'database';
     $('new-redirect').disabled = mode === 'readonly' || !state.revision;
   }
+  function renderQuickDestinations() {
+    const link = state.links.find(({ id }) => id === portfolioId);
+    $('quick-destinations').hidden = !state.revision || !link;
+    $('signout').disabled = state.saving;
+    const destination = safeUrl(link?.destination)?.href;
+    for (const button of destinationOptions) {
+      const selected = button.value === destination;
+      button.setAttribute('aria-pressed', selected);
+      button.setAttribute('aria-disabled', selected || state.loading || state.saving || state.removing);
+    }
+  }
   function render() {
+    renderQuickDestinations();
     const active = state.links.filter((link) => link.status === 'active').length;
     const inactive = state.links.length - active;
     for (const [id, count] of Object.entries({ 'total-count': state.links.length, 'active-count': active, 'inactive-count': inactive, 'nav-count': state.links.length, 'list-count': state.links.length, 'filter-all': state.links.length, 'filter-active': active, 'filter-inactive': inactive })) $(id).textContent = count;
@@ -139,8 +153,9 @@
     $('result-count').textContent = `Showing ${links.length} of ${state.links.length} redirect${state.links.length === 1 ? '' : 's'}`;
   }
   async function loadLinks() {
-    if (state.loading) return;
+    if (state.loading || state.saving || state.removing) return;
     state.loading = true;
+    renderQuickDestinations();
     $('refresh').disabled = true;
     $('refresh').setAttribute('aria-busy', 'true');
     $('list-error').hidden = true;
@@ -149,6 +164,7 @@
       if (!Array.isArray(data.links) || typeof data.revision !== 'string') throw new Error('The admin service returned invalid redirect data.');
       state.links = data.links.sort((a, b) => a.id.localeCompare(b.id));
       state.revision = data.revision;
+      $('quick-destinations-error').hidden = true;
       setMode(data.mode);
       render();
       $('updated-at').textContent = `Updated ${new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(new Date())}`;
@@ -164,12 +180,13 @@
       if (error.status === 401) lockPanel();
     } finally {
       state.loading = false;
+      renderQuickDestinations();
       $('refresh').disabled = false;
       $('refresh').removeAttribute('aria-busy');
     }
   }
   function openEdit(link = null) {
-    if (state.mode === 'readonly' || !state.revision) return;
+    if (state.mode === 'readonly' || !state.revision || state.saving) return;
     state.editing = link;
     $('edit-form').reset();
     $('edit-error').hidden = true;
@@ -201,7 +218,7 @@
   }
   function closeEdit() { if (!state.saving) $('edit-dialog').close(); }
   function openDelete(link) {
-    if (state.mode === 'readonly' || !state.revision) return;
+    if (state.mode === 'readonly' || !state.revision || state.saving) return;
     state.deleting = { ...link, revision: state.revision };
     $('delete-form').reset();
     $('delete-title').textContent = `Delete ${link.id}?`;
@@ -221,6 +238,8 @@
     state.key = '';
     state.links = [];
     state.revision = '';
+    renderQuickDestinations();
+    $('quick-destinations-error').hidden = true;
     $('redirect-rows').replaceChildren();
     $('new-redirect').disabled = true;
     $('signout').hidden = true;
@@ -255,6 +274,27 @@
     } finally { $('login-submit').disabled = false; }
   });
   $('signout').addEventListener('click', lockPanel);
+  for (const button of destinationOptions) button.addEventListener('click', async () => {
+    if ($('quick-destinations').hidden || button.getAttribute('aria-disabled') === 'true') return;
+    const link = state.links.find(({ id }) => id === portfolioId);
+    const errorMessage = $('quick-destinations-error');
+    errorMessage.hidden = true;
+    state.saving = true;
+    renderQuickDestinations();
+    try {
+      await saveRedirect(link.id, button.value, link.status, false);
+      toast(`Portfolio destination set to ${button.textContent}.`);
+    } catch (error) {
+      if (error.status === 401) lockPanel();
+      else {
+        errorMessage.textContent = error.status === 409 ? `${error.message} Refresh the list before trying again.` : error.message;
+        errorMessage.hidden = false;
+      }
+    } finally {
+      state.saving = false;
+      renderQuickDestinations();
+    }
+  });
   $('new-redirect').addEventListener('click', () => openEdit());
   $('empty-create').addEventListener('click', () => openEdit());
   $('refresh').addEventListener('click', () => state.mode === 'readonly' ? readOnlyPreview() : loadLinks());
@@ -287,6 +327,7 @@
     if (state.removing || !state.deleting || $('delete-id').value !== state.deleting.id) return;
     const { id, revision } = state.deleting;
     state.removing = true;
+    renderQuickDestinations();
     $('delete-error').hidden = true;
     for (const control of $('delete-form').querySelectorAll('button, input')) control.disabled = true;
     $('confirm-delete').textContent = 'Deleting…';
@@ -305,11 +346,25 @@
       if (error.status === 401) lockPanel();
     } finally {
       state.removing = false;
+      renderQuickDestinations();
       for (const control of $('delete-form').querySelectorAll('button, input')) control.disabled = false;
       $('confirm-delete').textContent = 'Delete permanently';
       $('confirm-delete').disabled = $('delete-id').value !== state.deleting?.id;
     }
   });
+  async function saveRedirect(id, destination, status, create) {
+    const result = await api(`/api/links/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify({ destination, status, revision: state.revision, create }) });
+    const existing = state.links.findIndex((link) => link.id === id);
+    const saved = { ...result.record, id };
+    if (existing >= 0) state.links[existing] = saved;
+    else state.links.push(saved);
+    state.links.sort((a, b) => a.id.localeCompare(b.id));
+    state.revision = result.revision;
+    if (id === portfolioId) $('quick-destinations-error').hidden = true;
+    render();
+    $('updated-at').textContent = 'Updated just now';
+    return result;
+  }
   $('edit-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     if (state.saving) return;
@@ -331,20 +386,13 @@
     }
     const status = $('edit-form').elements.status.value;
     state.saving = true;
+    renderQuickDestinations();
     for (const control of $('edit-form').querySelectorAll('button, input')) control.disabled = true;
     const buttonLabel = $('save-redirect').textContent;
     $('save-redirect').textContent = 'Saving…';
     try {
-      const result = await api(`/api/links/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify({ destination, status, revision: state.revision, create: !state.editing }) });
-      const existing = state.links.findIndex((link) => link.id === id);
-      const saved = { ...result.record, id };
-      if (existing >= 0) state.links[existing] = saved;
-      else state.links.push(saved);
-      state.links.sort((a, b) => a.id.localeCompare(b.id));
-      state.revision = result.revision;
-      render();
+      const result = await saveRedirect(id, destination, status, !state.editing);
       $('edit-dialog').close();
-      $('updated-at').textContent = 'Updated just now';
       toast(result.changed === false ? 'No changes to save.' : state.mode === 'local' ? 'Saved to SQLite. Local card destination updated.' : 'Saved to the database. Card destination updated.', result.commitUrl);
     } catch (error) {
       $('edit-error').textContent = error.status === 409 ? `${error.message} Close this editor and refresh the list before trying again.` : error.message;
@@ -352,6 +400,7 @@
       if (error.status === 401) lockPanel();
     } finally {
       state.saving = false;
+      renderQuickDestinations();
       for (const control of $('edit-form').querySelectorAll('button, input')) control.disabled = false;
       $('save-redirect').textContent = buttonLabel;
       updateCardPreview();

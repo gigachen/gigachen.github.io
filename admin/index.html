@@ -7,8 +7,8 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://taptap-admin.admin-service.workers.dev; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="theme-color" content="#173ad4">
   <title>Redirects · TapTap Admin</title>
-  <link rel="stylesheet" href="./admin.css?v=delete-redirects-1">
-  <script src="./admin.js?v=short-card-ids-1" defer></script>
+  <link rel="stylesheet" href="./admin.css?v=portfolio-destinations-1">
+  <script src="./admin.js?v=portfolio-destinations-1" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to redirects</a>
@@ -31,6 +31,19 @@
         <article class="stat"><div class="stat-top"><span>Total redirects</span><span class="stat-icon blue" aria-hidden="true">↗</span></div><strong id="total-count">—</strong><p>Permanent URLs for your cards</p></article>
         <article class="stat"><div class="stat-top"><span>Active redirects</span><span class="stat-icon green" aria-hidden="true">✓</span></div><strong id="active-count">—</strong><p><span class="small-dot green-dot"></span>Ready to connect</p></article>
         <article class="stat"><div class="stat-top"><span>Inactive redirects</span><span class="stat-icon gray" aria-hidden="true">Ⅱ</span></div><strong id="inactive-count">—</strong><p>Paused until you reactivate them</p></article>
+      </section>
+
+      <section id="quick-destinations" class="quick-destinations" aria-labelledby="quick-destinations-title" hidden>
+        <div>
+          <h2 id="quick-destinations-title">Quick destination</h2>
+          <p>/gigachen-portfolio</p>
+        </div>
+        <div class="destination-options" role="group" aria-label="Portfolio redirect destinations">
+          <button type="button" class="button secondary" value="https://www.gigachen.me/" aria-pressed="false">Portfolio</button>
+          <button type="button" class="button secondary" value="https://www.instagram.com/francis_gunadi/" aria-pressed="false">Instagram</button>
+          <button type="button" class="button secondary" value="https://www.linkedin.com/in/francisgunadi/" aria-pressed="false">LinkedIn</button>
+        </div>
+        <p id="quick-destinations-error" class="form-error" role="alert" hidden></p>
       </section>
 
       <section class="redirect-panel" aria-labelledby="list-title">
